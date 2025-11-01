@@ -83,6 +83,52 @@ static void CG_Viewpos_f (void) {
 		(int)cg.refdef.viewangles[YAW]);
 }
 
+
+static void CG_TeleOffset_f(void) {
+
+	vec3_t offsetPos;
+	float offsetX = 0, offsetY = 0, offsetZ = 0;
+
+	VectorCopy(cg.predictedPlayerState.origin, offsetPos);
+	
+	switch (trap->Cmd_Argc())
+	{
+	case 2:
+		offsetX = atoi(CG_Argv(1));
+		offsetPos[0] += offsetX;
+
+		trap->SendClientCommand(va("amtele %f %f %f %f",
+		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+		break;
+
+	case 3:
+		offsetX = atoi(CG_Argv(1));
+		offsetY = atoi(CG_Argv(2));
+		offsetPos[0] += offsetX;
+		offsetPos[1] += offsetY;
+
+		trap->SendClientCommand(va("amtele %f %f %f %f",
+		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+		break;
+
+	case 4:
+		offsetX = atoi(CG_Argv(1));
+		offsetY = atoi(CG_Argv(2));
+		offsetZ = atoi(CG_Argv(3));
+		offsetPos[0] += offsetX;
+		offsetPos[1] += offsetY;
+		offsetPos[2] += offsetZ;
+
+		trap->SendClientCommand(va("amtele %f %f %f %f",
+		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+		break;
+	
+	default:
+		Com_Printf("Usage: amteleoffset x y z\n");
+		return;
+	}
+}
+
 static void CG_PTelemark_f (void) {
 	int x, y, z, yaw;
 
@@ -2304,12 +2350,15 @@ static void CG_AddStrafeTrail_f(void)
 
 }
 
+extern lastWhispererId;
 void CG_Say_f( void ) {
 	char msg[MAX_SAY_TEXT] = {0};
 	char word[MAX_SAY_TEXT] = {0};
 	char numberStr[MAX_SAY_TEXT] = {0};
 	int i, number = 0, numWords = trap->Cmd_Argc();
+	int lastWhispererNum = -1;
 	int clientNum = -1, messagetype = 0;
+	float num = 0;
 
 	if (!Q_stricmp(CG_Argv(0), "say")) {
 		messagetype = 1;
@@ -2321,6 +2370,12 @@ void CG_Say_f( void ) {
 		clientNum = CG_ClientNumberFromString(CG_Argv(1));
 		messagetype = 3;
 		if (clientNum < 0) //couldn't find target or multiple matches found
+			return;
+	}
+	else if (!Q_stricmp(CG_Argv(0), "reply")) {
+		messagetype = 4;
+		lastWhispererNum = lastWhispererId;
+		if (lastWhispererNum < 0)
 			return;
 	}
 	else {//shouldn't happen...
@@ -2340,6 +2395,21 @@ void CG_Say_f( void ) {
 		else if (!Q_stricmp(word, "%S%")) {
 			number = cg.predictedPlayerState.stats[STAT_ARMOR];
 			Com_sprintf(numberStr, sizeof(numberStr), "%i", number);
+			Q_strncpyz(word, numberStr, sizeof(word));
+		}
+		else if (!Q_stricmp(word, "%U%")) {
+			num = cg.currentSpeed;
+			Com_sprintf(numberStr, sizeof(numberStr), "%.0f", floorf(num + 0.5f));
+			Q_strncpyz(word, numberStr, sizeof(word));
+		}
+		else if (!Q_stricmp(word, "%UKM%")) {
+			num = cg.currentSpeed;
+			Com_sprintf(numberStr, sizeof(numberStr), "%0.1f", num * 0.05f);
+			Q_strncpyz(word, numberStr, sizeof(word));
+		}
+		else if (!Q_stricmp(word, "%UM%")) {
+			num = cg.currentSpeed;
+			Com_sprintf(numberStr, sizeof(numberStr), "%0.1f", num * 0.03106855f);
 			Q_strncpyz(word, numberStr, sizeof(word));
 		}
 		else if (!Q_stricmp(word, "%F%")) {
@@ -2418,6 +2488,13 @@ void CG_Say_f( void ) {
 		case 3:
 			if (clientNum > -1) trap->SendClientCommand(va("tell %i %s", clientNum, msg));
 			break;
+		case 4:
+			if (lastWhispererNum > -1) trap->SendClientCommand(va("tell %i %s", lastWhispererNum, msg));
+			break;
+			
+				
+			
+
 	}
 }
 
@@ -2513,6 +2590,7 @@ static consoleCommand_t	commands[] = {
 
 	{ "PTelemark",					CG_PTelemark_f },
 	{ "PTele",						CG_PTele_f },
+	{ "amTeleOffset",				CG_TeleOffset_f },
 
 	{ "remapShader",				CG_RemapShader_f },
 	{ "listRemaps",					CG_ListRemaps_f },
@@ -2521,7 +2599,8 @@ static consoleCommand_t	commands[] = {
 	{ "weaplast",					CG_LastWeapon_f },
 	{ "do",							CG_Do_f },
 	{ "doStop",						CG_DoCancel_f },
-	{ "doCancel",					CG_DoCancel_f }
+	{ "doCancel",					CG_DoCancel_f },
+	{"reply",						CG_Say_f}
 };
 
 static const size_t numCommands = ARRAY_LEN( commands );

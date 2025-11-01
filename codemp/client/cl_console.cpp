@@ -49,6 +49,8 @@ cvar_t		*con_notifyvote;
 
 vec4_t	console_color = {0.509f, 0.609f, 0.847f, 1.0f};
 
+int replying;
+
 /*
 ================
 Con_ToggleConsole_f
@@ -115,7 +117,7 @@ void Con_MessageMode3_f (void) {	//target chat
 		assert(!"null cgvm");
 		return;
 	}
-
+	replying = 0;
 	if (cl.snap.ps.pm_flags & PMF_FOLLOW) { //Send to the person we are spectating instead
 		chat_playerNum = cl.snap.ps.clientNum;
 	}
@@ -155,6 +157,34 @@ void Con_MessageMode4_f (void)
 	Field_Clear( &chatField );
 	chatField.widthInChars = SCREEN_WIDTH / (BIGCHAR_WIDTH * cls.widthRatioCoef) - (24 * cls.widthRatioCoef);
 	Key_SetCatcher( Key_GetCatcher( ) ^ KEYCATCH_MESSAGE );
+}
+/*
+================
+Con_MessageMode5_f
+================
+*/
+void Con_MessageMode5_f(void)
+{	//last messager
+
+	if (!cls.cgameStarted)
+	{
+		assert(!"null cgvm");
+		return;
+	}
+
+	chat_playerNum = CGVM_LastWhisperer();
+	if (chat_playerNum < 0 || chat_playerNum >= MAX_CLIENTS) {
+		chat_playerNum = -1;
+		return;
+	}
+	
+	replying = 1;
+
+	chat_team = qfalse;
+	Field_Clear(&chatField);
+	chatField.widthInChars = SCREEN_WIDTH / (BIGCHAR_WIDTH * cls.widthRatioCoef) - (24 * cls.widthRatioCoef);
+	Key_SetCatcher(Key_GetCatcher() ^ KEYCATCH_MESSAGE);
+	
 }
 
 /*
@@ -560,6 +590,7 @@ void Con_Init (void) {
 	Cmd_AddCommand( "messagemode2", Con_MessageMode2_f, "Team Chat" );
 	Cmd_AddCommand( "messagemode3", Con_MessageMode3_f, "Private Chat with Target Player" );
 	Cmd_AddCommand( "messagemode4", Con_MessageMode4_f, "Private Chat with Last Attacker" );
+	Cmd_AddCommand( "messagemode5", Con_MessageMode5_f, "Private Chat with Person who whispered you last" );
 	Cmd_AddCommand( "clear", Con_Clear_f, "Clear console text" );
 	Cmd_AddCommand( "condump", Con_Dump_f, "Dump console text to file" );
 	Cmd_SetCommandCompletionFunc( "condump", Cmd_CompleteTxtName );
@@ -817,7 +848,78 @@ void Con_DrawInput (void) {
 				SCREEN_WIDTH - 3 * con.charWidth, qtrue, qtrue );
 }
 
+static void CL_ClientCleanName(const char* in, char* out, int outSize)
+{
+	int outpos = 0, colorlessLen = 0;
 
+	// discard leading spaces
+	for (; *in == ' '; in++);
+
+	// discard leading asterisk's (fail raven for using * as a skipnotify)
+	// apparently .* causes the issue too so... derp
+
+	for (; *in && outpos < outSize - 1; in++)
+	{
+		out[outpos] = *in;
+
+		if (*in == '^' && *(in + 1) >= '0' && *(in + 1) <= '9') {
+			in++; // Skip the digit after ^
+			continue; // Skip this iteration, moving to the next character
+		}
+
+		if (*(in + 1) && *(in + 1) != '\0' && *(in + 2) && *(in + 2) != '\0')
+		{
+			if (*in == ' ' && *(in + 1) == ' ' && *(in + 2) == ' ') // don't allow more than 3 consecutive spaces
+				continue;
+
+			if (*in == '@' && *(in + 1) == '@' && *(in + 2) == '@') // don't allow too many consecutive @ signs
+				continue;
+		}
+
+		if ((byte)*in < 0x20)
+			continue;
+
+		switch ((byte)*in)
+		{
+		default:
+			break;
+		case 0x81:
+		case 0x8D:
+		case 0x8F:
+		case 0x90:
+		case 0x9D:
+		case 0xA0:
+		case 0xAD:
+			continue;
+			break;
+		}
+
+		if (outpos > 0 && out[outpos - 1] == Q_COLOR_ESCAPE)
+		{
+			if (Q_IsColorStringExt(&out[outpos - 1]))
+			{
+				colorlessLen--;
+			}
+			else
+			{
+				//spaces = ats = 0;
+				colorlessLen++;
+			}
+		}
+		else
+		{
+			//spaces = ats = 0;
+			colorlessLen++;
+		}
+		outpos++;
+	}
+
+	out[outpos] = '\0';
+
+	// don't allow empty names
+	if (*out == '\0' || colorlessLen == 0)
+		Q_strncpyz(out, "Padawan", outSize);
+}
 
 float chatColour[4] = { 1.0f, 1.0f, 1.0f, 1.0f }; // For DrawStringExt2
 /*
@@ -836,6 +938,7 @@ void Con_DrawNotify (void)
 	int		skip;
 	int		currentColor;
 	const char* chattext;
+	int		whispering = 0;
 
 	currentColor = 7;
 	re->SetColor( g_color_table[currentColor] );
@@ -917,11 +1020,35 @@ void Con_DrawNotify (void)
 		return;
 	}
 
+	char base[100] = "";
 	// draw the chat line
+	if (replying)
+	{
+		strcat(base, "Reply to ");
+		//replying = 0;
+	}
+	if (!replying)
+	{
+		strcat(base, "Whisper to ");
+	}
+
+	char player[100];
+	
+
 	if ( Key_GetCatcher( ) & KEYCATCH_MESSAGE )
 	{
 		if (chat_playerNum != -1) {
-			chattext = "Whisper:";
+			char* s = cl.gameState.stringData + cl.gameState.stringOffsets[CS_PLAYERS+chat_playerNum];		
+			char* player = Info_ValueForKey(s, "n");//this contains name
+			char sanitized[MAX_NAME_LENGTH];
+			char without_color[100];
+			CL_ClientCleanName(player, sanitized, MAX_NAME_LENGTH);	//sanitize the name to avoid crashing, saves in sanitized
+
+			strcat(base, sanitized);
+			strcat(base, ":");
+			chattext = base;
+
+			whispering = 1;			
 		}
 		else if (chat_team)	{
 			chattext = SE_GetString("MP_SVGAME", "SAY_TEAM");
@@ -930,14 +1057,25 @@ void Con_DrawNotify (void)
 			chattext = SE_GetString("MP_SVGAME", "SAY");
 		}
 
-		SCR_DrawStringExt2(8 * cls.widthRatioCoef, v, BIGCHAR_WIDTH*cls.widthRatioCoef, BIGCHAR_HEIGHT, chattext, chatColour, qfalse, qfalse);
-		skip = strlen(chattext) + 1;
-		Field_BigDraw( &chatField, skip * BIGCHAR_WIDTH, v,
-			SCREEN_WIDTH - ( skip + 1 ) * BIGCHAR_WIDTH, qtrue, qtrue );
+		if (whispering)
+		{
+			SCR_DrawStringExt2(8 * cls.widthRatioCoef, v, BIGCHAR_WIDTH * cls.widthRatioCoef, BIGCHAR_HEIGHT, chattext, chatColour, qfalse, qfalse);
+			skip = 1;
+			v += BIGCHAR_HEIGHT;
+			Field_BigDraw(&chatField, skip * BIGCHAR_WIDTH, v,
+				SCREEN_WIDTH - (skip + 1) * BIGCHAR_WIDTH, qtrue, qtrue);
 
-		v += BIGCHAR_HEIGHT;
+		}
+		else
+		{
+			SCR_DrawStringExt2(8 * cls.widthRatioCoef, v, BIGCHAR_WIDTH * cls.widthRatioCoef, BIGCHAR_HEIGHT, chattext, chatColour, qfalse, qfalse);
+			skip = strlen(chattext) + 1;
+			Field_BigDraw(&chatField, skip * BIGCHAR_WIDTH, v,
+				SCREEN_WIDTH - (skip + 1) * BIGCHAR_WIDTH, qtrue, qtrue);
+
+			v += BIGCHAR_HEIGHT;
+		}
 	}
-
 }
 
 /*

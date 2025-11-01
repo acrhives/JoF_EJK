@@ -532,7 +532,7 @@ void UI_ReadLegalForce(void)
 		}
 	}
 	//Second, legalize them.
-	if (!BG_LegalizedForcePowers(fcfString, sizeof (fcfString), uiMaxRank, ui_freeSaber.integer, forceTeam, atoi( Info_ValueForKey( info, "g_gametype" )), 0))
+	if (!BG_LegalizedForcePowers2(fcfString, sizeof(fcfString), uiMaxRank, ui_freeSaber.integer, forceTeam, atoi(Info_ValueForKey(info, "g_gametype")), 0, ui_drawTeamForces.integer))
 	{ //if they were illegal, we should refresh them.
 		updateForceLater = qtrue;
 	}
@@ -886,6 +886,51 @@ qboolean UI_ForceSide_HandleKey(int flags, float *special, int key, int num, int
 		UpdateForceUsed();
 
 		gTouchedForce = qtrue;
+		return qtrue;
+	}
+	return qfalse;
+}
+
+qboolean UI_ShowAllForces_HandleKey(int flags, float* special, int key, int num, int min, int max, int type)
+{
+	if (key == A_MOUSE1 || key == A_MOUSE2 || key == A_ENTER || key == A_KP_ENTER)
+	{
+		int i = num;
+		int x = 0;
+
+		Menu_SetFeederSelection(NULL, FEEDER_FORCECFG, 0, NULL);
+
+		if (key == A_MOUSE2)
+		{
+			i--;
+		}
+		else
+		{
+			i++;
+		}
+		if (i < min)
+		{
+			i = max;
+		}
+		else if (i > max)
+		{
+			i = min;
+		}
+		num = i;
+
+		trap->Cvar_SetValue("cg_enableForceMenu", num);
+		trap->Cvar_SetValue("ui_drawTeamForces",
+			cg_enableForceMenu.integer ||
+			ui_gametype.integer >= GT_TEAM ||
+			(uiForceSide == FORCE_LIGHTSIDE && !uiForcePowersDisabled[FP_TEAM_HEAL]) ||
+			(uiForceSide == FORCE_DARKSIDE && !uiForcePowersDisabled[FP_TEAM_FORCE])
+		);
+
+
+
+		UpdateForceUsed();
+		gTouchedForce = qtrue;
+
 		return qtrue;
 	}
 	return qfalse;

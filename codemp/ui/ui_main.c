@@ -2101,6 +2101,33 @@ qboolean UI_TrueJediEnabled( void )
 	return (trueJedi != 0);
 }
 
+void UpdateForceStatus(void);
+static void UI_DrawShowAllForce(rectDef_t* rect, float scale, vec4_t color, int textStyle, int val, int min, int max, int iMenuFont)
+{
+	int i;
+	char s[256];
+
+	i = val;
+	if (i < min || i > max)
+	{
+		i = min;
+	}
+
+	if (i == 0)
+	{
+		trap->SE_GetStringTextString("MENUS_NO", s, sizeof(s));
+	}
+	else
+	{
+		trap->SE_GetStringTextString("MENUS_YES", s, sizeof(s));
+	}
+
+	UI_ReadLegalForce();
+	UpdateForceStatus();
+
+	Text_Paint(rect->x, rect->y, scale, color, s, 0, 0, textStyle, iMenuFont);
+}
+
 static void UI_DrawJediNonJedi(rectDef_t *rect, float scale, vec4_t color, int textStyle, int val, int min, int max, int iMenuFont)
 {
 	int i;
@@ -2332,7 +2359,7 @@ void UpdateBotButtons(void)
 
 }
 
-void UpdateForceStatus()
+void UpdateForceStatus(void)
 {
 	menuDef_t *menu;
 
@@ -2423,9 +2450,22 @@ void UpdateForceStatus()
 		}
 		else
 		{
-			if (!cg_enableForceMenu.integer) { UI_SetForceDisabled(disabledForce); }
+			if (!cg_enableForceMenu.integer)
+			{
+				UI_SetForceDisabled(disabledForce);
+				trap->Cvar_SetValue( "ui_drawTeamForces",
+					cg_enableForceMenu.integer || 
+					ui_gametype.integer >= GT_TEAM ||
+					(uiForceSide == FORCE_LIGHTSIDE && !uiForcePowersDisabled[FP_TEAM_HEAL]) ||
+					(uiForceSide == FORCE_DARKSIDE && !uiForcePowersDisabled[FP_TEAM_FORCE])
+				);
+			}
 			else
+			{
 				UI_SetForceDisabled(0);
+				trap->Cvar_SetValue("ui_drawTeamForces", 1);
+			}
+
 			Menu_ShowItemByName(menu, "noforce", qfalse);
 			Menu_ShowItemByName(menu, "yesforce", qtrue);
 		}
@@ -2846,6 +2886,17 @@ static int UI_OwnerDrawWidth(int ownerDraw, float scale) {
 			s = (char *)UI_GetStringEdString("MENUS", "FORCEDESC_DARK");
 		}
 		break;
+	case UI_SHOW_ALL_FORCES:
+		i = cg_enableForceMenu.integer;
+		if (i == 1)
+		{
+			s = (char*)UI_GetStringEdString("MENUS", "YES");
+		}
+		else
+		{
+			s = (char*)UI_GetStringEdString("MENUS", "NO");
+		}
+		break;
     case UI_JEDI_NONJEDI:
 		i = uiJediNonJedi;
 		if (i < 0 || i > 1)
@@ -3236,6 +3287,9 @@ static void UI_OwnerDraw(float x, float y, float w, float h, float text_x, float
 	case UI_FORCE_SIDE:
       UI_DrawForceSide(&rect, scale, color, textStyle, uiForceSide, 1, 2, iMenuFont);
       break;
+	case UI_SHOW_ALL_FORCES:
+	  UI_DrawShowAllForce(&rect, scale, color, textStyle, cg_enableForceMenu.integer, 0, 1, iMenuFont);
+	  break;
 	case UI_JEDI_NONJEDI:
       UI_DrawJediNonJedi(&rect, scale, color, textStyle, uiJediNonJedi, 0, 1, iMenuFont);
       break;
@@ -5383,6 +5437,9 @@ static qboolean UI_OwnerDrawHandleKey(int ownerDraw, int flags, float *special, 
     case UI_FORCE_SIDE:
       return UI_ForceSide_HandleKey(flags, special, key, uiForceSide, 1, 2, ownerDraw);
       break;
+	case UI_SHOW_ALL_FORCES:
+	  return UI_ShowAllForces_HandleKey(flags, special, key, cg_enableForceMenu.integer, 0, 1, ownerDraw);
+	  break;
     case UI_JEDI_NONJEDI:
       return UI_JediNonJedi_HandleKey(flags, special, key, uiJediNonJedi, 0, 1, ownerDraw);
       break;
@@ -11815,10 +11872,11 @@ UI_LoadForceConfig_List
 =================
 Looks in the directory for force config files (.fcf) and loads the name in
 */
+#define PROFILE_SKIN_SIZE 8192 //2048
 void UI_LoadForceConfig_List( void )
 {
 	int			numfiles = 0;
-	char		filelist[2048];
+	char		filelist[PROFILE_SKIN_SIZE];
 	char		configname[128];
 	char		*fileptr = NULL;
 	int			j = 0;
@@ -11833,12 +11891,12 @@ void UI_LoadForceConfig_List( void )
 nextSearch:
 	if (lightSearch)
 	{ //search light side folder
-		numfiles = trap->FS_GetFileList("forcecfg/light", "fcf", filelist, 2048 );
+		numfiles = trap->FS_GetFileList("forcecfg/light", "fcf", filelist, PROFILE_SKIN_SIZE );
 		uiInfo.forceConfigLightIndexBegin = uiInfo.forceConfigCount-1;
 	}
 	else
 	{ //search dark side folder
-		numfiles = trap->FS_GetFileList("forcecfg/dark", "fcf", filelist, 2048 );
+		numfiles = trap->FS_GetFileList("forcecfg/dark", "fcf", filelist, PROFILE_SKIN_SIZE );
 		uiInfo.forceConfigDarkIndexBegin = uiInfo.forceConfigCount-1;
 	}
 
@@ -11959,8 +12017,8 @@ void UI_BuildQ3Model_List( void )
 {
 	int			numdirs;
 	int			numfiles;
-	char		dirlist[2048];
-	char		filelist[2048];
+	char		dirlist[PROFILE_SKIN_SIZE];
+	char		filelist[PROFILE_SKIN_SIZE];
 	char		skinname[64];
 	char		*dirptr;
 	char		*fileptr;
@@ -11974,7 +12032,7 @@ void UI_BuildQ3Model_List( void )
 	uiInfo.q3HeadCount = 0;
 
 	// iterate directory of all player models
-	numdirs = trap->FS_GetFileList("models/players", "/", dirlist, 2048 );
+	numdirs = trap->FS_GetFileList("models/players", "/", dirlist, PROFILE_SKIN_SIZE );
 	dirptr  = dirlist;
 	for (i=0; i<numdirs && uiInfo.q3HeadCount < MAX_Q3PLAYERMODELS; i++,dirptr+=dirlen+1)
 	{
@@ -11997,7 +12055,7 @@ void UI_BuildQ3Model_List( void )
 				continue;
 		}
 
-		numfiles = trap->FS_GetFileList( va("models/players/%s", dirptr), "skin", filelist, 2048 );
+		numfiles = trap->FS_GetFileList( va("models/players/%s", dirptr), "skin", filelist, PROFILE_SKIN_SIZE );
 		fileptr  = filelist;
 		for (j=0; j<numfiles && uiInfo.q3HeadCount < MAX_Q3PLAYERMODELS;j++,fileptr+=filelen+1)
 		{
@@ -12199,7 +12257,7 @@ UI_BuildPlayerModel_List
 */
 void UI_BuildPlayerModel_List( qboolean inGameLoad )
 {
-	static const size_t DIR_LIST_SIZE = 16384;
+	static const size_t DIR_LIST_SIZE = 65536;//16384; //65536 is 8 times PROFILE_SKIN_SIZE
 
 	int			numdirs;
 	size_t		dirListSize = DIR_LIST_SIZE;
@@ -12257,7 +12315,7 @@ void UI_BuildPlayerModel_List( qboolean inGameLoad )
 
 		if (f)
 		{
-			char	filelist[2048];
+			char	filelist[PROFILE_SKIN_SIZE];
 			playerSpeciesInfo_t *species = NULL;
 			char                 skinname[64];
 			int                  numfiles;
@@ -12510,13 +12568,14 @@ void UI_Init( qboolean inGameLoad ) {
 
 	String_Init();
 
+	AssetCache();
+
 	UI_BuildPlayerModel_List(inGameLoad);
 	UI_BuildQ3Model_List();
 
 	uiInfo.uiDC.cursor	= trap->R_RegisterShaderNoMip( "menu/art/3_cursor2" );
 	uiInfo.uiDC.whiteShader = trap->R_RegisterShaderNoMip( "white" );
 
-	AssetCache();
 
 	uiInfo.teamCount = 0;
 	uiInfo.characterCount = 0;

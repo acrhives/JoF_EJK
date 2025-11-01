@@ -101,6 +101,8 @@ int	numSortedTeamPlayers;
 
 int lastvalidlockdif;
 
+int lastWhispererId = -1;
+
 extern float zoomFov; //this has to be global client-side
 
 char systemChat[256];
@@ -9707,6 +9709,30 @@ void CG_ChatBox_AddString(char *chatStr)
 		chatStr[sizeof(chat->string) - 1] = 0;
 	}
 
+	if (strstr(chatStr, "^7]: ^6"))
+	{
+		char* search = "^7]: ^6";
+		char* lastWhisperer;
+		char* lastWhisperermodified;
+		char name[MAX_NETNAME + MAX_SAY_TEXT + 64];
+		Q_strncpyz(name, chatStr, MAX_NETNAME + MAX_SAY_TEXT + 64);
+		int clientID;
+
+		lastWhisperer = Q_strtokm(name, search); //is for example [Padawan
+		lastWhisperer = lastWhisperer + 1; //is for example Padawan
+
+		int clientNum = CG_ClientNumFromName(lastWhisperer);
+		
+
+		if (clientNum != cg.clientNum)
+		{
+			lastWhispererId = clientNum;
+		}
+
+		//trap->Print("lastwhisperer is %s\n", (lastWhisperer));
+	}
+
+
 	if (cg_cleanChatbox.integer)
 	{
 		char *token;
@@ -11728,6 +11754,8 @@ static void CG_PlayerLabels(void)
 		if (!cgs.clientinfo[i].infoValid)
 			continue;
 		if (cgs.clientinfo[i].team == TEAM_SPECTATOR)
+			continue;
+		if (cent->currentState.bolt1 && cg_hideDuelerNames.integer == 1) //if cvar is set and player is in duel - skip client, dont draw name
 			continue;
 		if (CG_IsMindTricked(cent->currentState.trickedentindex,
 			cent->currentState.trickedentindex2,
