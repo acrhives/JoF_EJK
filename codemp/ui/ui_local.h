@@ -50,9 +50,23 @@ void UI_LoadMenus( const char *menuFile, qboolean reset );
 void UI_LoadArenas( void );
 void UI_LoadForceConfig_List( void );
 void UI_UpdateCurrentServerInfo( void );
-void UI_BuildQ3Model_List( void );
 void UI_BuildPlayerModel_List( qboolean inGameLoad );
 void UI_UpdateSaberHiltInfo( void );
+#define PROFILE_SKIN_SIZE 16384 //8192 //2048
+typedef struct uiQ3ModelBuild_s {
+	qboolean inProgress;
+	int dirJob;
+	int dirCount;
+	int dirIndex;
+	char dirList[PROFILE_SKIN_SIZE];
+	char *dirPtr;
+	char dirName[MAX_QPATH];
+	int fileJob;
+	int fileCount;
+	char fileList[PROFILE_SKIN_SIZE];
+} uiQ3ModelBuild_t;
+void UI_BuildQ3Model_List(char* dirptr, char* filelist, int bufsize);
+void UI_BuildQ3Model_List_ProcessDir(char* dirptr, char* filelist, int numfiles);
 
 void UI_GetCharacterCvars( void );
 const char *UI_GetModelWithSkin(char *model);
@@ -149,7 +163,7 @@ typedef struct playerInfo_s {
 #define MAX_MODS				64
 #define MAX_DEMOS				2048 // 256
 #define MAX_MOVIES				2048 // 256
-#define MAX_Q3PLAYERMODELS		1024 //256
+#define MAX_Q3PLAYERMODELS		2048 //1024 //256
 
 #define DEMO_DIRECTORY "demos"
 #define DEMO_EXTENSION "dm_"

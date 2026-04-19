@@ -278,13 +278,6 @@ const char *bg_customVGSSoundNames[MAX_CUSTOM_VGS_SOUNDS] = {
 	"*team_thanks",
 	"*team_wait",
 	"*team_yes",
-	"*meme_fixitnow",
-	"*meme_tfisthat",
-	"*meme_banhim",
-	"*meme_ohsorry",
-	"*meme_huh",
-	"*meme_surprise",
-	"*meme_yablewit",
 	NULL
 };
 
@@ -2088,37 +2081,13 @@ Items can be picked up without actually touching their physical bounds to make
 grabbing them easier
 ============
 */
-qboolean	BG_PlayerTouchesItem( playerState_t *ps, entityState_t *item, int atTime ) {
-	vec3_t		origin;
-	gitem_t *gitem;
+qboolean	BG_PlayerTouchesItem(playerState_t* ps, entityState_t* item, int atTime) {
+	vec3_t origin = { 0.0f };
 
-	BG_EvaluateTrajectory( &item->pos, atTime, origin );
+	BG_EvaluateTrajectory(&item->pos, atTime, origin);
 
-	if (item->modelindex < 1 || item->modelindex >= bg_numItems) {
-		Com_Error(ERR_DROP, "BG_CanItemBeGrabbed: index out of range");
-	}
-
-	gitem = &bg_itemlist[item->modelindex];
-
-	// if it is a flag
-	if ((gitem->giTag == PW_REDFLAG || gitem->giTag == PW_BLUEFLAG || gitem->giTag == PW_NEUTRALFLAG)
-#if defined(QAGAME)
-		&& g_fixFlagHitbox.integer
-#elif defined(CGAME)
-		&& cgs.serverMod == SVMOD_JAPRO
-#endif
-		) {//Flag hitbox
-			if (ps->origin[0] - origin[0] > 52
-			   || ps->origin[0] - origin[0] < -52
-			   || ps->origin[1] - origin[1] > 52
-			   || ps->origin[1] - origin[1] < -52
-			   || ps->origin[2] - origin[2] > 68
-			   || ps->origin[2] - origin[2] < -36) {
-				return qfalse;
-			}
-	}
 	// we are ignoring ducked differences here
-	else if (ps->origin[0] - origin[0] > 44
+	if (ps->origin[0] - origin[0] > 44
 		|| ps->origin[0] - origin[0] < -50
 		|| ps->origin[1] - origin[1] > 36
 		|| ps->origin[1] - origin[1] < -36
@@ -2880,12 +2849,7 @@ qboolean BG_IsValidCharacterModel(const char *modelName, const char *skinName)
 
 qboolean BG_ValidateSkinForTeam( const char *modelName, char *skinName, int team, float *colors )
 {
-	if ((strlen (modelName) > 5 &&
-		!Q_stricmpn (modelName, "jedi_", 5)) || //argh, it's a custom player skin!
-		(!Q_stricmpn(skinName, "rgb", 3) // or a custom RGB skin
-		&& (!BG_FileExists(va("models/players/%s/model_red.skin", modelName)) || //and we don't have team variants to use ?
-		!BG_FileExists(va("models/players/%s/model_blue.skin", modelName)))
-		))
+	if (strlen (modelName) > 5 && !Q_stricmpn (modelName, "jedi_", 5))
 	{
 		if (team == TEAM_RED && colors)
 		{
@@ -2899,7 +2863,19 @@ qboolean BG_ValidateSkinForTeam( const char *modelName, char *skinName, int team
 			colors[1] = 0.0f;
 			colors[2] = 1.0f;
 		}
-		return qtrue;
+
+		//if we are on an RGB skin that does not have team colors, exit early and default will be used with the rgb colors set.
+		if (!Q_stricmpn(skinName, "rgb", 3) && (!BG_FileExists(va("models/players/%s/model_red.skin", modelName)) || !BG_FileExists(va("models/players/%s/model_blue.skin", modelName))))
+			return qtrue;
+
+		//if it's a customizeable jedi_* skin with custom parts selected, exit early and the team rgb colors will be used.
+		if (strchr(skinName, '|')
+			&& strstr(skinName, "head")
+			&& strstr(skinName, "torso")
+			&& strstr(skinName, "lower"))
+		{
+			return qtrue;
+		}
 	}
 
 	if (team == TEAM_RED)

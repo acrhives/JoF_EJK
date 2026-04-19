@@ -34,6 +34,230 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 extern float CG_RadiusForCent( centity_t *cent );
 qboolean CG_WorldCoordToScreenCoord(vec3_t worldCoord, float *x, float *y);
 qboolean CG_CalcMuzzlePoint( int entityNum, vec3_t muzzle );
+
+static vmCvar_t *CG_RadialBindCvar( int index ) {
+	switch ( index ) {
+	case 0: return &cg_radialBind1;
+	case 1: return &cg_radialBind2;
+	case 2: return &cg_radialBind3;
+	case 3: return &cg_radialBind4;
+	case 4: return &cg_radialBind5;
+	case 5: return &cg_radialBind6;
+	case 6: return &cg_radialBind7;
+	case 7: return &cg_radialBind8;
+	default: return NULL;
+	}
+}
+
+#define RADIAL_MENU_BIND_COUNT 8
+#define RADIAL_MENU_ABORT_SLOT 8
+
+static qboolean CG_RadialMenuIsAbortSlot( int index ) {
+	return (qboolean)( index == RADIAL_MENU_ABORT_SLOT );
+}
+
+static float CG_RadialMenuNormalizeAngle( float angle ) {
+	while ( angle < 0.0f ) {
+		angle += (float)M_PI * 2.0f;
+	}
+	while ( angle >= (float)M_PI * 2.0f ) {
+		angle -= (float)M_PI * 2.0f;
+	}
+	return angle;
+}
+
+static float CG_RadialMenuEaseOut( float t ) {
+	const float inv = 1.0f - Com_Clamp( 0.0f, 1.0f, t );
+	return 1.0f - inv * inv * inv;
+}
+
+
+static void CG_RadialMenuCopyLabel( int index, char *label, int labelSize ) {
+	vmCvar_t *bind = CG_RadialBindCvar( index );
+
+	if ( CG_RadialMenuIsAbortSlot( index ) ) {
+		Q_strncpyz( label, "Abort", labelSize );
+		return;
+	}
+
+	Q_strncpyz( label, bind ? bind->string : "", labelSize );
+	if ( !label[0] ) {
+		Q_strncpyz( label, "<empty>", labelSize );
+	}
+}
+
+static void CG_RadialMenuDrawLine( float x1, float y1, float x2, float y2, float thickness, const vec4_t color ) {
+	const float dx = x2 - x1;
+	const float dy = y2 - y1;
+	const float length = sqrtf( dx * dx + dy * dy );
+
+	if ( length <= 0.0f ) {
+		return;
+	}
+
+	trap->R_SetColor( color );
+	CG_DrawRotatePic2( x1 + dx * 0.5f, y1 + dy * 0.5f, length, thickness, atan2f( dy, dx ) * 180.0f / (float)M_PI, cgs.media.whiteShader );
+	trap->R_SetColor( NULL );
+}
+
+static int CG_RadialMenuSelection( float x, float y ) {
+	const float deadzone = Q_max( 0.0f, cg_radialDeadzone.value );
+	const float lenSq = x * x + y * y;
+	float angle;
+
+	if ( lenSq < deadzone * deadzone ) {
+		return -1;
+	}
+
+	angle = atan2f( y, x );
+	angle = CG_RadialMenuNormalizeAngle( angle + (float)M_PI * 0.5f );
+
+	/*
+	 * Keep the original 8-way bind layout, but reserve a narrow bottom slice
+	 * for a dedicated abort wedge between bind4 and bind5.
+	 */
+	if ( angle >= (float)M_PI * 0.94f && angle <= (float)M_PI * 1.06f ) {
+		return RADIAL_MENU_ABORT_SLOT;
+	}
+
+	return ( (int)( angle / ( (float)M_PI * 2.0f / RADIAL_MENU_BIND_COUNT ) ) ) & ( RADIAL_MENU_BIND_COUNT - 1 );
+}
+
+void CG_RadialMenuSync( void ) {
+	qboolean active = qfalse;
+	float x = 0.0f;
+	float y = 0.0f;
+
+	if ( !trap->GetRadialMenuState ) {
+		return;
+	}
+
+	trap->GetRadialMenuState( &active, &x, &y );
+
+	if ( active && !cgs.radialMenuActive ) {
+		cgs.radialMenuOpenTime = cg.time;
+	}
+
+	if ( cgs.radialMenuActive && !active && cgs.radialMenuSelection >= 0 && !CG_RadialMenuIsAbortSlot( cgs.radialMenuSelection ) ) {
+		vmCvar_t *bind = CG_RadialBindCvar( cgs.radialMenuSelection );
+		if ( bind && bind->string[0] ) {
+			trap->SendConsoleCommand( va( "%s\n", bind->string ) );
+		}
+	}
+
+	cgs.radialMenuActive = active;
+	cgs.radialMenuX = x;
+	cgs.radialMenuY = y;
+	cgs.radialMenuSelection = active ? CG_RadialMenuSelection( x, y ) : -1;
+
+	if ( !active ) {
+		cgs.radialMenuOpenTime = 0;
+		cgs.radialMenuX = 0.0f;
+		cgs.radialMenuY = 0.0f;
+	}
+}
+
+void CG_RadialMenuDraw( void ) {
+	static const vec4_t ringShadow = { 0.03f, 0.05f, 0.08f, 0.36f };
+	static const vec4_t idleColor = { 0.10f, 0.14f, 0.20f, 0.84f };
+	static const vec4_t activeColor = { 0.82f, 0.68f, 0.24f, 0.94f };
+	static const vec4_t abortColor = { 0.42f, 0.12f, 0.10f, 0.90f };
+	static const vec4_t abortActiveColor = { 0.80f, 0.24f, 0.18f, 0.96f };
+	static const vec4_t dividerColor = { 0.70f, 0.74f, 0.80f, 0.18f };
+	static const vec4_t dotColor = { 0.88f, 0.90f, 0.94f, 0.72f };
+	float offsetX = 0.0f;
+	float offsetY = 0.0f;
+	const float textScale = Q_max( 0.12f, 1.0f );
+	const float deadzone = Q_max( 10.0f, cg_radialDeadzone.value * 0.38f );
+	const float openFrac = CG_RadialMenuEaseOut( ( cg.time - cgs.radialMenuOpenTime ) / 150.0f );
+	const float animScale = 0.72f + 0.28f * openFrac;
+	const float alphaScale = 0.30f + 0.70f * openFrac;
+	const float outerRadius = Q_max( 88.0f, cg_radialRadius.value ) * animScale;
+	const float labelRadius = outerRadius * 0.72f;
+	const float dividerOuter = outerRadius * 0.95f;
+	const float dividerInner = deadzone + 6.0f;
+	float centerX;
+	float centerY;
+	int i;
+
+	if ( sscanf( cg_radialOffset.string, "%f %f", &offsetX, &offsetY ) < 1 ) {
+		offsetX = 0.0f;
+		offsetY = 0.0f;
+	}
+
+	centerX = SCREEN_WIDTH * 0.5f + offsetX;
+	centerY = SCREEN_HEIGHT * 0.5f + offsetY;
+
+	for ( i = 0; i < RADIAL_MENU_BIND_COUNT; i++ ) {
+		const float boundary = ( (float)M_PI * 2.0f / RADIAL_MENU_BIND_COUNT ) * i - (float)M_PI * 0.5f;
+		CG_RadialMenuDrawLine(
+			centerX + cosf( boundary ) * dividerInner,
+			centerY + sinf( boundary ) * dividerInner,
+			centerX + cosf( boundary ) * dividerOuter,
+			centerY + sinf( boundary ) * dividerOuter,
+			1.5f,
+			dividerColor );
+	}
+
+	if ( cgs.radialMenuSelection >= 0 ) {
+		float theta;
+		float indicatorLength;
+		vec4_t indicatorColor;
+
+		if ( CG_RadialMenuIsAbortSlot( cgs.radialMenuSelection ) ) {
+			theta = (float)M_PI * 0.5f;
+			indicatorLength = outerRadius * 0.82f;
+		}
+		else {
+			theta = ( (float)M_PI * 2.0f / RADIAL_MENU_BIND_COUNT ) * ( cgs.radialMenuSelection + 0.5f ) - (float)M_PI * 0.5f;
+			indicatorLength = outerRadius * 0.78f;
+		}
+
+		indicatorColor[0] = activeColor[0]; indicatorColor[1] = activeColor[1]; indicatorColor[2] = activeColor[2]; indicatorColor[3] = activeColor[3];
+		indicatorColor[3] = 0.88f * alphaScale;
+
+		CG_RadialMenuDrawLine(
+			centerX + cosf( theta ) * ( deadzone * 0.55f ),
+			centerY + sinf( theta ) * ( deadzone * 0.55f ),
+			centerX + cosf( theta ) * indicatorLength,
+			centerY + sinf( theta ) * indicatorLength,
+			3.0f,
+			indicatorColor );
+	}
+
+	for ( i = 0; i < RADIAL_MENU_BIND_COUNT; i++ ) {
+		const float theta = ( (float)M_PI * 2.0f / RADIAL_MENU_BIND_COUNT ) * ( i + 0.5f ) - (float)M_PI * 0.5f;
+		const float px = centerX + cosf( theta ) * labelRadius;
+		const float py = centerY + sinf( theta ) * labelRadius;
+		vec4_t textColor;
+		char label[64];
+		float textWidth;
+
+		CG_RadialMenuCopyLabel( i, label, sizeof( label ) );
+		textColor[0] = ( i == cgs.radialMenuSelection ) ? activeColor[0] : colorWhite[0]; textColor[1] = ( i == cgs.radialMenuSelection ) ? activeColor[1] : colorWhite[1]; textColor[2] = ( i == cgs.radialMenuSelection ) ? activeColor[2] : colorWhite[2]; textColor[3] = ( i == cgs.radialMenuSelection ) ? activeColor[3] : colorWhite[3];
+		textColor[3] = ( i == cgs.radialMenuSelection ? 1.0f : 0.82f ) * alphaScale;
+		textWidth = CG_Text_Width( label, textScale, FONT_SMALL2 );
+
+		CG_Text_Paint( px - textWidth * 0.5f, py + CG_Text_Height( label, textScale, FONT_SMALL2 ) * 0.25f, textScale, textColor, label, 0.0f, 0, ITEM_TEXTSTYLE_OUTLINED, FONT_SMALL2 );
+	}
+
+	{
+		vec4_t textColor;
+		char label[64];
+		float textWidth;
+		const float py = centerY + outerRadius * 0.86f;
+
+		CG_RadialMenuCopyLabel( RADIAL_MENU_ABORT_SLOT, label, sizeof( label ) );
+		textColor[0] = ( cgs.radialMenuSelection == RADIAL_MENU_ABORT_SLOT ) ? abortActiveColor[0] : colorWhite[0]; textColor[1] = ( cgs.radialMenuSelection == RADIAL_MENU_ABORT_SLOT ) ? abortActiveColor[1] : colorWhite[1]; textColor[2] = ( cgs.radialMenuSelection == RADIAL_MENU_ABORT_SLOT ) ? abortActiveColor[2] : colorWhite[2]; textColor[3] = ( cgs.radialMenuSelection == RADIAL_MENU_ABORT_SLOT ) ? abortActiveColor[3] : colorWhite[3];
+		textColor[3] = ( cgs.radialMenuSelection == RADIAL_MENU_ABORT_SLOT ? 1.0f : 0.85f ) * alphaScale;
+		textWidth = CG_Text_Width( label, textScale, FONT_SMALL2 );
+
+		CG_Text_Paint( centerX - textWidth * 0.5f, py, textScale, textColor, label, 0.0f, 0, ITEM_TEXTSTYLE_OUTLINED, FONT_SMALL2 );
+	}
+
+	CG_FillRect( centerX - deadzone, centerY - deadzone, deadzone * 2.0f, deadzone * 2.0f, ringShadow );
+	CG_FillRect( centerX - 3.0f, centerY - 3.0f, 6.0f, 6.0f, dotColor );
+}
 static void CG_DrawSiegeTimer(int timeRemaining, qboolean isMyTeam);
 static void CG_DrawSiegeDeathTimer( int timeRemaining );
 static void CG_StrafeHelper( centity_t *cent );//japro start
@@ -864,153 +1088,146 @@ the saber style (fast, medium, strong, staff, dual, tavion, desann)
 */
 static void CG_DrawSaberStyle(centity_t* cent, menuDef_t* menuHUD)
 {
-	itemDef_t* focusItem;
+    itemDef_t* focusItem;
 
-	if (!cent->currentState.weapon) // We don't have a weapon right now
-	{
-		return;
-	}
+    if (!cent->currentState.weapon) // We don't have a weapon right now
+    {
+        return;
+    }
 
-	if (cent->currentState.weapon != WP_SABER)
-	{
-		return;
-	}
+    if (cent->currentState.weapon != WP_SABER)
+    {
+        return;
+    }
 
-	// Can we find the menu?
-	if (!menuHUD)
-	{
-		return;
-	}
+    // Can we find the menu?
+    if (!menuHUD)
+    {
+        return;
+    }
 
-	// draw the current saber style in this window
-	switch (cg.predictedPlayerState.fd.saberDrawAnimLevel)
-	{
-	case 5: // Tavion
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_tavion");
+    // draw the current saber style in this window
+    switch (cg.predictedPlayerState.fd.saberDrawAnimLevel)
+    {
+    case 5: // Tavion
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_tavion");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-			break;
-		}
-	case 1: // FORCE_LEVEL_1: Fast
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_fast");
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+            break;
+        }
+    case 1: // FORCE_LEVEL_1: Fast
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_fast");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-		}
-		break;
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+        }
+        break;
 
-	case 2: // FORCE_LEVEL_2: Medium
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_medium");
+    case 2: // FORCE_LEVEL_2: Medium
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_medium");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-		}
-		break;
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+        }
+        break;
 
-	case 6: // SS_DUAL does aldro have adhd?
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_dual");
+    case 6: // SS_DUAL does aldro have adhd?
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_dual");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-		}
-		break;
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+        }
+        break;
 
-	case 7: // SS_STAFF i love fae 
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_staff");
+    case 7: // SS_STAFF i love fae 
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_staff");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-		}
-		break;
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+        }
+        break;
 
-	case 4: // Desann owo awa ewe pls work else ill kms
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_desann");
+    case 4: // Desann owo awa ewe pls work else ill kms
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_desann");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-			break;
-		}
-	case 3: // FORCE_LEVEL_3: Strong
-		focusItem = Menu_FindItemByName(menuHUD, "saberstyle_strong");
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+            break;
+        }
+    case 3: // FORCE_LEVEL_3: Strong
+        focusItem = Menu_FindItemByName(menuHUD, "saberstyle_strong");
 
-		if (focusItem)
-		{
-			trap->R_SetColor(hudTintColor);
+        if (focusItem)
+        {
+            trap->R_SetColor(hudTintColor);
 
-			CG_DrawPic(
-				SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
-				focusItem->window.rect.y,
-				focusItem->window.rect.w * cgs.widthRatioCoef,
-				focusItem->window.rect.h,
-				focusItem->window.background
-			);
-		}
-		break;
-	}
+            CG_DrawPic(
+                SCREEN_WIDTH - (SCREEN_WIDTH - focusItem->window.rect.x) * cgs.widthRatioCoef,
+                focusItem->window.rect.y,
+                focusItem->window.rect.w * cgs.widthRatioCoef,
+                focusItem->window.rect.h,
+                focusItem->window.background
+            );
+        }
+        break;
+    }
 }
 
-
-
-/*
-================
-CG_DrawAmmo
-================
-*/
 static void CG_DrawAmmo( centity_t	*cent,menuDef_t *menuHUD)
 {
 	playerState_t	*ps;
@@ -5750,13 +5967,13 @@ static void CG_DrawInventory(int y)
 		return;
 
 	y += 8;
-
+	/*
 	if (cg.snap->ps.stats[STAT_WEAPONS] & (1 << WP_TRIP_MINE) && cg.snap->ps.ammo[weaponData[WP_TRIP_MINE].ammoIndex] > 0) {
 		CG_DrawPic(xAlign, y, ico_size*cgs.widthRatioCoef, ico_size, cgs.media.weaponIcons[WP_TRIP_MINE]);
 		CG_DrawNumField(xAlign, y, 2, cg.snap->ps.ammo[weaponData[WP_TRIP_MINE].ammoIndex], 6, 12, NUM_FONT_SMALL, qfalse);
 		y += ico_size;
 	}
-
+	*/
 	if (!cg.snap->ps.stats[STAT_HOLDABLE_ITEM] || !cg.snap->ps.stats[STAT_HOLDABLE_ITEMS])
 		return;
 
@@ -7200,10 +7417,18 @@ static void CG_DrawCrosshair( vec3_t worldPoint, int chEntValid ) {
 
 	//draw a health bar directly under the crosshair if we're looking at something
 	//that takes damage
-	if (crossEnt &&	crossEnt->currentState.maxhealth && cg_drawPlayerNames.integer < 2)//loda
+	if (crossEnt && crossEnt->currentState.maxhealth)//loda
 	{
-		CG_DrawHealthBar(crossEnt, chX, chY, w, h);
-		chY += HEALTH_HEIGHT*2;
+		// Only require Force Sense 3 for NPC health bars NOT placed by mapper (shouldtarget = mapper's showhealth 1)
+		if (!(crossEnt->currentState.number >= MAX_CLIENTS
+			&& crossEnt->currentState.eType == ET_NPC
+			&& !crossEnt->currentState.shouldtarget
+			&& !(cg.predictedPlayerState.fd.forcePowersActive & (1 << FP_SEE)
+				&& cg.predictedPlayerState.fd.forcePowerLevel[FP_SEE] >= 3)))
+		{
+			CG_DrawHealthBar(crossEnt, chX, chY, w, h);
+			chY += HEALTH_HEIGHT * 2;
+		}
 	}
 	else if (crossEnt && crossEnt->currentState.number < MAX_CLIENTS)
 	{
@@ -7339,7 +7564,7 @@ void CG_SaberClashFlare( void )
 		return;
 	}
 
-	v = ( 1.0f - ((float)t / maxTime )) * ((1.0f - ( len / 800.0f )) * 2.0f + 0.35f);
+	v = ( 1.0f - ((float)t / maxTime )) * ((1.0f - ( len / 800.0f )) * 2.0f + 0.35f) * cg_saberClashSize.value;
 	if (v < 0.001f)
 	{
 		v = 0.001f;
@@ -10009,7 +10234,15 @@ static QINLINE void CG_ChatBox_DrawStrings(void)
 	int linesToDraw = 0;
 	int i = 0;
 	float x = (cg.scoreBoardShowing ? 8 : cg_chatBoxX.value) * cgs.widthRatioCoef;
-	float y = cg.scoreBoardShowing ? 475 : cg_chatBoxHeight.value;
+	float y = cg_chatBoxHeight.value;
+	if (cg.scoreBoardShowing)
+	{
+		if (cg.pressingScoreBoard && cgs.numClients > 25)
+			y = 10000;
+		else
+			y = 475;
+	}
+	
 	float fontScale = 0.65 * cg_chatBoxFontSize.value;//JAPRO - Clientside - Chatbox Font Size Scaler
 	const qboolean drawAnyway = (qboolean)(cg_chatBoxShowHistory.integer && (trap->Key_GetCatcher() & KEYCATCH_CONSOLE));
 
@@ -10950,6 +11183,10 @@ static void CG_Draw2D( void ) {
 	// always draw chat
 	CG_ChatBox_DrawStrings();
 
+	if ( cgs.radialMenuActive ) {
+		CG_RadialMenuDraw();
+	}
+
 	if (cg_drawPlayerNames.integer)//JAPRO
 		CG_PlayerLabels();
 }
@@ -11779,9 +12016,6 @@ static void CG_PlayerLabels(void)
 			continue;
 
 		CG_DrawScaledProportionalString(x, y, cgs.clientinfo[i].name, UI_CENTER, colorTable[CT_WHITE], cg_drawPlayerNamesScale.value);
-
-		if (cg_drawPlayerNames.integer > 1 && cent->currentState.maxhealth)
-			CG_DrawHealthBar(cent, x, y-16, 1, 1);
 	}
 }
 
@@ -12643,4 +12877,3 @@ static QINLINE void CG_PlayerView(centity_t *cent)
 		}
 	}
 }
-

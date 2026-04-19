@@ -186,6 +186,7 @@ static void CG_ScoresDown_f( void ) {
 		// is within two seconds
 		cg.showScores = qtrue;
 	}
+	cg.pressingScoreBoard = qtrue;
 }
 
 /*
@@ -199,6 +200,7 @@ static void CG_ScoresUp_f( void ) {
 		cg.showScores = qfalse;
 		cg.scoreFadeTime = cg.time;
 	}
+	cg.pressingScoreBoard = qfalse;
 }
 
 void CG_ClientList_f( void )
@@ -512,6 +514,9 @@ void CG_LoadHud_f( void ) {
 
 	if ( cgs.newHud && cg_hudFiles.integer == 3 ) {
 		hudSet = "ui/elegance_hud.txt";
+	}
+	else if ( cgs.newHud && cg_hudFiles.integer == 4 ) {
+		hudSet = "ui/jof_hud.txt";
 	}
 	else {
 		hudSet = cg_hudFiles.string;
@@ -1275,6 +1280,7 @@ static void CG_Flipkick_f(void)
 static void CG_Lowjump_f(void)
 {
 	int index;
+	char val[4];
 
 	if ((cgs.serverMod == SVMOD_JAPRO && cg.predictedPlayerState.stats[STAT_RACEMODE]) || (cgs.restricts & RESTRICT_DO)) {
 		trap->SendConsoleCommand("+moveup;wait 2;-moveup\n");
@@ -1284,7 +1290,12 @@ static void CG_Lowjump_f(void)
 	index = CG_Do_GetIndex();
 	trap->SendConsoleCommand("+moveup\n");
 	Q_strncpyz(cg.doVstr[index], "-moveup\n", sizeof(cg.doVstr));
-	cg.doVstrTime[index] = trap->Milliseconds();
+
+	trap->Cvar_VariableStringBuffer("cl_cmdratecap", val, sizeof(val));
+	if (atoi(val))
+		cg.doVstrTime[index] = trap->Milliseconds() + 16;
+	else
+		cg.doVstrTime[index] = trap->Milliseconds();
 }
 
 static void CG_NorollDown_f(void)
@@ -1491,6 +1502,7 @@ static qboolean japroPluginDisables[] = {
 	qtrue,//{"Disable damage numbers"},//26
 	qtrue,//{"Centermuzzle"},//27
 	qtrue,//{"Show checkpoints in console only"}//28
+	qfalse,
 };
 
 static qboolean japlusPluginDisables[] = {
@@ -1525,6 +1537,7 @@ static qboolean japlusPluginDisables[] = {
 	qfalse,//{"Disable damage numbers"},//26
 	qfalse,//{"Centermuzzle"},//27
 	qfalse,//{"Show checkpoints in console only"}//28
+	qtrue
 };
 
 static bitInfo_T pluginDisables[] = { // MAX_WEAPON_TWEAKS tweaks (24)
@@ -1537,7 +1550,7 @@ static bitInfo_T pluginDisables[] = { // MAX_WEAPON_TWEAKS tweaks (24)
 	{"No new deathmsg"},//7
 	{"New sight effect"},//8
 	{"No alt dim effect"},//9
-	{"Holstered saber"},//10
+	{"Holster staff on back"},//10
 	{"Ledge grab"},//11
 	{"Disable New DFA Primary"},//12
 	{"Disable New DFA Alt"},//13
@@ -1558,9 +1571,20 @@ static bitInfo_T pluginDisables[] = { // MAX_WEAPON_TWEAKS tweaks (24)
 	{"Show chatbox checkpoints"},//25
 	{"Disable damage numbers"},//26
 	{"Centermuzzle"},//27
-	{"Show checkpoints in console only"}//28
+	{"Show checkpoints in console only"},//28
+	{"Disable holstered sabers"}//29
 };
 static const int MAX_PLUGINDISABLES = ARRAY_LEN( pluginDisables );
+
+static qboolean CG_PluginOptionEnabled(int index)
+{
+	if (index == 9)
+	{ // Plugin 9 is inverted: bit set means option disabled
+		return !(cp_pluginDisable.integer & (1 << index));
+	}
+
+	return (cp_pluginDisable.integer & (1 << index)) != 0;
+}
 
 void CG_PluginDisable_f( void ) {
 
@@ -1578,7 +1602,7 @@ void CG_PluginDisable_f( void ) {
 			if (cgs.serverMod == SVMOD_JAPRO && !japroPluginDisables[i])
 				continue;
 
-			if ( (cp_pluginDisable.integer & (1 << i)) ) {
+			if ( CG_PluginOptionEnabled(i) ) {
 				Com_Printf( "%2d [X] %s\n", display, pluginDisables[i].string );
 			}
 			else {
@@ -1621,7 +1645,7 @@ void CG_PluginDisable_f( void ) {
 		trap->Cvar_Set( "cp_pluginDisable", va( "%i", (1 << index2) ^ (cp_pluginDisable.integer & mask ) ) );
 		trap->Cvar_Update( &cp_pluginDisable );
 
-		Com_Printf( "%s %s^7\n", pluginDisables[index2].string, ((cp_pluginDisable.integer & (1 << index2))
+		Com_Printf( "%s %s^7\n", pluginDisables[index2].string, (CG_PluginOptionEnabled(i)
 			? "^2Enabled" : "^1Disabled") );
 	}
 }
@@ -1688,7 +1712,7 @@ static bitInfo_T playerStyles[] = { // MAX_WEAPON_TWEAKS tweaks (24)
 	{ "Hide racers in race mode" },//5
 	{ "Disable racer VFX" },//6
 	{ "Disable non-racer VFX in race mode" },//7
-	{ "VFX duelers 1" },//8
+	{ "Turn off VFX for Duelers" },//8
 	{ "VFX am alt dim 1" },//9
 	{ "Hide non duelers" },//10
 	{ "Hide ysal shell" },//11
@@ -2350,7 +2374,149 @@ static void CG_AddStrafeTrail_f(void)
 
 }
 
-extern lastWhispererId;
+// telegun
+extern vec3_t cg_crosshairPos;
+static void CG_TeleCrosshair_f(void) {
+	vec3_t newPos;
+	vec3_t viewAngles;
+	vec3_t forward;
+	float offset = 0.0f;
+	float yawoffset = 0.0f;
+
+	if (!cg.snap || VectorCompare(cg_crosshairPos, vec3_origin)) {
+		return;
+	}
+
+	if (trap->Cmd_Argc() == 1) {
+		trap->SendClientCommand(va("amTele %f %f %f %f",
+			cg_crosshairPos[0], cg_crosshairPos[1], cg_crosshairPos[2] + 24, cg.predictedPlayerState.viewangles[YAW]));
+	}
+
+	else if (trap->Cmd_Argc() >= 2) {
+		offset = atof(CG_Argv(1));
+		if (trap->Cmd_Argc() >= 3)
+		{
+			yawoffset = atof(CG_Argv(2));
+		}
+		VectorCopy(cg.predictedPlayerState.viewangles, viewAngles);
+		AngleVectors(viewAngles, forward, NULL, NULL);
+		VectorMA(cg.predictedPlayerState.origin, offset, forward, newPos);
+
+		trap->SendClientCommand(va("amTele %f %f %f %f",
+			newPos[0], newPos[1], newPos[2], cg.predictedPlayerState.viewangles[YAW] + yawoffset));
+	}
+}
+
+// get
+static void CG_TeleTargetPlayer_f(void) {
+	vec3_t viewAngles;
+	vec3_t forward;
+	vec3_t newPos;
+	int targetNum = -1;
+	float offset = 100.0f;
+	float yawoffset = 0.0f;
+
+	if (!cg.snap) {
+		return;
+	}
+
+	if (trap->Cmd_Argc() == 1 || (trap->Cmd_Argc() > 1 && Q_stricmp(CG_Argv(1), "gun") == 0)) {
+		targetNum = CG_CrosshairPlayer();
+	}
+	else {
+		targetNum = CG_ClientNumberFromString(CG_Argv(1));
+	}
+	if (trap->Cmd_Argc() > 2) {
+		offset = atof(CG_Argv(2));
+
+		if (trap->Cmd_Argc() > 3) {
+			yawoffset = atof(CG_Argv(3));
+		}
+	}
+	
+
+	if (targetNum < 0 || targetNum >= MAX_CLIENTS) {
+		return;
+	}
+
+	VectorCopy(cg.predictedPlayerState.viewangles, viewAngles);
+	if (trap->Cmd_Argc() <= 2) {
+		viewAngles[PITCH] = 0;
+		viewAngles[ROLL] = 0;
+	}
+	AngleVectors(viewAngles, forward, NULL, NULL);
+	VectorMA(cg.predictedPlayerState.origin, offset, forward, newPos);
+
+	if (trap->Cmd_Argc() <= 2) {
+		newPos[2] = cg.predictedPlayerState.origin[2] + 24; // so that players dont get caught in slight ledges - similar to JA+ default teleport behaviour
+	}
+
+	trap->SendClientCommand(va("amTele %i %f %f %f %f",
+		targetNum, newPos[0], newPos[1], newPos[2], cg.predictedPlayerState.viewangles[YAW] + 180 + yawoffset));
+}
+
+// goto
+static void CG_TeleToPlayer_f(void) {
+	int targetNum = -1;
+	float offset = 100.0f;
+	float yawoffset = 0.0f;
+	vec3_t viewAngles;
+	vec3_t newPos;
+	vec3_t forward;
+	const centity_t* cent = NULL;
+
+
+	if (!cg.snap) {
+		return;
+	}
+
+	if (trap->Cmd_Argc() == 1 || (trap->Cmd_Argc() > 1 && Q_stricmp(CG_Argv(1), "gun") == 0)) {
+		targetNum = CG_CrosshairPlayer();
+	}
+	else {
+		targetNum = CG_ClientNumberFromString(CG_Argv(1));
+	}
+	if (trap->Cmd_Argc() > 2) {
+		offset = atof(CG_Argv(2));
+
+		if (trap->Cmd_Argc() > 3) {
+			yawoffset = atof(CG_Argv(3));
+		}
+	}
+
+
+	if (targetNum < 0 || targetNum >= MAX_CLIENTS) {
+		return;
+	}
+	cent = &cg_entities[targetNum];
+	if (!cent) {
+		return;
+	}
+
+	if (cg.time - cent->currentState.pos.trTime >= 1000) {
+		Com_Printf(S_COLOR_YELLOW "Client location prediction unavailable, fallback to amtele...\n"); // this is better than nothing, and better than teleporting to a random location if the target player has moved since the last update
+		trap->SendClientCommand(va("amtele %i", targetNum));
+		return;
+	}
+
+	VectorCopy(cent->lerpOrigin, newPos);
+	VectorCopy(cent->lerpAngles, viewAngles);
+	if (trap->Cmd_Argc() <= 2) {
+		viewAngles[PITCH] = 0;
+		viewAngles[ROLL] = 0;
+	}
+	AngleVectors(viewAngles, forward, NULL, NULL);
+	VectorMA(newPos, offset, forward, newPos);
+
+	if (trap->Cmd_Argc() == 2) {
+		newPos[2] = cent->currentState.pos.trBase[2] + 24;
+	}
+
+	trap->SendClientCommand(va("amtele %f %f %f %f",
+		newPos[0], newPos[1], newPos[2], cent->lerpAngles[YAW] + 180 + yawoffset));
+}
+
+extern int lastWhispererId;
 void CG_Say_f( void ) {
 	char msg[MAX_SAY_TEXT] = {0};
 	char word[MAX_SAY_TEXT] = {0};
@@ -2588,6 +2754,10 @@ static consoleCommand_t	commands[] = {
 	{ "clearTrail",					CG_DeleteStrafeTrail_f },
 	{ "strafeTrail",				CG_AddStrafeTrail_f },
 
+	{ "teleGun",					CG_TeleCrosshair_f },
+	{ "get",						CG_TeleTargetPlayer_f },
+	{ "goto",						CG_TeleToPlayer_f },
+
 	{ "PTelemark",					CG_PTelemark_f },
 	{ "PTele",						CG_PTele_f },
 	{ "amTeleOffset",				CG_TeleOffset_f },
@@ -2600,7 +2770,7 @@ static consoleCommand_t	commands[] = {
 	{ "do",							CG_Do_f },
 	{ "doStop",						CG_DoCancel_f },
 	{ "doCancel",					CG_DoCancel_f },
-	{"reply",						CG_Say_f}
+	{ "reply",						CG_Say_f}
 };
 
 static const size_t numCommands = ARRAY_LEN( commands );
@@ -2703,7 +2873,7 @@ static const char *gcmds[] = {
 	"amMindTrick",
 	"amSeeGhost",
 	"amMap",
-	"ampSay",
+	"amPSay",
 	"amWeather",
 	"amForceAltDim",
 	"amUnForceAltDim",
@@ -2781,6 +2951,49 @@ static const char *gcmds[] = {
 
 	"top",
 	"saberColor",
+
+	"amOrigin",
+	"gunOrigin",
+	"gunProtect",
+	"gunShowMotd",
+	"gunSleep",
+	"gunWake",
+	"gunSlap",
+	"gunKick",
+	"gunBan",
+	"gunMindTrick",
+	"gunSilence",
+	"amUnSilence",
+	"gunUnSilence",
+	"gunEmpower",
+	"gunMerc",
+	"gunForceAltDim",
+	"gunUnForceAltDim",
+
+	"jetpack",
+	"amKnockMeDown",
+	"amDropSaber",
+	"toggleFlame",
+	"refuseTele",
+	"immortal",
+
+	"amAtEase",
+	"amComeOn",
+	"amDie",
+	"amDie2",
+	"amFinishingHim",
+	"amHello",
+	"amHiltThrow1",
+	"amHiltThrow2",
+	"amHips",
+	"amKiss",
+	"amKneel",
+	"amNeo",
+	"amNod",
+	"amPower",
+	"amShake",
+	"amWon",
+	"sleep",
 };
 static const size_t numgcmds = ARRAY_LEN( gcmds );
 

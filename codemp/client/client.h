@@ -138,6 +138,10 @@ typedef struct clientActive_s {
 	int			cgameForceSelection;
 	int			cgameInvenSelection;
 
+	qboolean	radialMenuActive;
+	float			radialMenuX;
+	float			radialMenuY;
+
 	qboolean	gcmdSendValue;
 	qboolean	gcmdSentValue;
 	byte		gcmdValue;
@@ -230,6 +234,8 @@ typedef struct clientConnection_s {
 
 	int			unique;					// from the server to use for connecting
 	bool		uniqueAssigned;					// from the server to use for connecting
+	int			demoTokenBitStart;		// bit position before anti-spoof token (for demo stripping)
+	int			demoTokenBitEnd;		// bit position after anti-spoof token (for demo stripping)
 	int			challenge;					// from the server to use for connecting
 	int			checksumFeed;				// from the server for checksum calculations
 
@@ -450,6 +456,7 @@ extern	cvar_t	*cl_noprint;
 extern	cvar_t	*cl_timegraph;
 extern	cvar_t	*cl_maxpackets;
 extern	cvar_t	*cl_packetdup;
+extern	cvar_t  *cl_cmdratecap;
 #ifndef TOURNAMENT_CLIENT
 extern	cvar_t	*cl_timeNudge;
 #else

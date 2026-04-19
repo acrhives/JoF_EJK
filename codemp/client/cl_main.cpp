@@ -27,6 +27,8 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #include "client.h"
 
 #include <limits.h>
+#include <SDL_vulkan.h>
+
 #include "ghoul2/G2.h"
 #include "qcommon/cm_public.h"
 #include "qcommon/MiniHeap.h"
@@ -55,6 +57,7 @@ cvar_t	*rconAddress;
 cvar_t	*cl_timeout;
 cvar_t	*cl_maxpackets;
 cvar_t	*cl_packetdup;
+cvar_t	*cl_cmdratecap;
 #ifndef TOURNAMENT_CLIENT
 cvar_t	*cl_timeNudge;
 #endif
@@ -136,6 +139,8 @@ cvar_t	*cl_afkTime;
 cvar_t	*cl_afkTimeUnfocused;
 
 cvar_t	*cl_logChat;
+
+cvar_t	*ui_vulkan_supported;
 
 #if defined(DISCORD) && defined(FINAL_BUILD)
 cvar_t	*cl_discordRichPresence;
@@ -244,9 +249,52 @@ void CL_WriteDemoMessage ( msg_t *msg, int headerBytes ) {
 
 	// skip the packet sequencing information
 	len = msg->cursize - headerBytes;
-	swlen = LittleLong(len);
-	FS_Write (&swlen, 4, clc.demofile);
-	FS_Write ( msg->data + headerBytes, len, clc.demofile );
+
+
+	// Fix for if the anti-spoof token is present in this message, strip it from the
+	// demo file. The token bit range was saved by CL_ParseServerMessage.
+	if (clc.demoTokenBitEnd > clc.demoTokenBitStart && clc.demoTokenBitStart > 0)
+	{
+		int payloadBitStart = headerBytes * 8;
+		int tokenStart = clc.demoTokenBitStart - payloadBitStart;
+		int tokenEnd = clc.demoTokenBitEnd - payloadBitStart;
+		int payloadBits = len * 8;
+		int tokenBits = tokenEnd - tokenStart;
+		int cleanBits = payloadBits - tokenBits;
+		int cleanLen = (cleanBits + 7) / 8;
+		byte cleanData[MAX_MSGLEN];
+
+		Com_Memset(cleanData, 0, cleanLen);
+
+		// Copy bits before the token (reliableAck encoding)
+		const byte *src = msg->data + headerBytes;
+		int i;
+		for (i = 0; i < tokenStart; i++)
+		{
+			if (src[i >> 3] & (1 << (i & 7)))
+				cleanData[i >> 3] |= (1 << (i & 7));
+		}
+		// Copy bits after the token (svc_* commands encoding)
+		for (i = tokenEnd; i < payloadBits; i++)
+		{
+			int dst = i - tokenBits;
+			if (src[i >> 3] & (1 << (i & 7)))
+				cleanData[dst >> 3] |= (1 << (dst & 7));
+		}
+
+		swlen = LittleLong(cleanLen);
+		FS_Write (&swlen, 4, clc.demofile);
+		FS_Write (cleanData, cleanLen, clc.demofile);
+
+		clc.demoTokenBitStart = 0;
+		clc.demoTokenBitEnd = 0;
+	}
+	else
+	{
+		swlen = LittleLong(len);
+		FS_Write (&swlen, 4, clc.demofile);
+		FS_Write ( msg->data + headerBytes, len, clc.demofile );
+	}
 }
 
 
@@ -2792,6 +2840,8 @@ void CL_Frame ( int msec ) {
 	}
 
 	// send intentions now
+	extern int cmdratecap_commandGenerated;
+	cmdratecap_commandGenerated = 0;
 	CL_SendCmd();
 
 	// resend a connection request if necessary
@@ -2887,7 +2937,7 @@ static void CL_ShutdownRef( qboolean restarting ) {
 	{
 		if ( re->Shutdown )
 		{
-			re->Shutdown( qtrue, restarting );
+			re->Shutdown(restarting ? qfalse : qtrue, restarting);
 		}
 	}
 
@@ -2985,12 +3035,33 @@ static void *CM_GetCachedMapDiskImage( void ) { return gpvCachedMapDiskImage; }
 static void CM_SetCachedMapDiskImage( void *ptr ) { gpvCachedMapDiskImage = ptr; }
 static void CM_SetUsingCache( qboolean usingCache ) { gbUsingCachedMapDataRightNow = usingCache; }
 
-#define G2_VERT_SPACE_SERVER_SIZE 1024//256
+#define G2_VERT_SPACE_SERVER_SIZE 2048 //256 originally
 IHeapAllocator *G2VertSpaceServer = NULL;
 CMiniHeap IHeapAllocator_singleton(G2_VERT_SPACE_SERVER_SIZE * 1024);
 
 static IHeapAllocator *GetG2VertSpaceServer( void ) {
 	return G2VertSpaceServer;
+}
+
+static void CL_UpdateVulkanAvailability(void)
+{
+	ui_vulkan_supported = Cvar_Get("ui_vulkan_supported", "0", CVAR_ROM);
+
+#ifdef SDL_VIDEO_VULKAN
+	const int result = SDL_Vulkan_LoadLibrary(NULL);
+	if (result == 0)
+	{
+		Cvar_Set("ui_vulkan_supported", "1");
+		SDL_Vulkan_UnloadLibrary();
+	}
+	else
+	{
+		Com_Printf("SDL_Vulkan_LoadLibrary failed: %s\n", SDL_GetError());
+		Cvar_Set("ui_vulkan_supported", "0");
+	}
+#else
+	Cvar_Set("ui_vulkan_supported", "0");
+#endif
 }
 
 #define DEFAULT_RENDER_LIBRARY "rd-eternaljk"
@@ -3004,7 +3075,7 @@ void CL_InitRef( void ) {
 //	Com_Printf( "----- Initializing Renderer ----\n" );
 	Com_Printf( "---------- Initializing Renderer ---------\n" );
 
-	cl_renderer = Cvar_Get( "cl_renderer", DEFAULT_RENDER_LIBRARY, CVAR_ARCHIVE|CVAR_LATCH|CVAR_PROTECTED, "Which renderer library to use" );
+	cl_renderer = Cvar_Get( "cl_renderer", DEFAULT_RENDER_LIBRARY, CVAR_ARCHIVE|CVAR_LATCH, "Which renderer library to use" );
 
 	Com_sprintf( dllName, sizeof( dllName ), "%s_" ARCH_STRING DLL_EXT, cl_renderer->string );
 
@@ -3638,7 +3709,7 @@ static void CL_MaxFPS_f(void) {
 	Cbuf_ExecuteText(EXEC_NOW, va("set com_maxFPS %s\n", Cmd_ArgsFrom(1)));
 }
 
-#define G2_VERT_SPACE_CLIENT_SIZE 256
+#define G2_VERT_SPACE_CLIENT_SIZE 2048 //256 originally
 
 /*
 ===============
@@ -3750,6 +3821,7 @@ void CL_Init( void ) {
 
 	cl_maxpackets = Cvar_Get ("cl_maxpackets", "125", CVAR_ARCHIVE );
 	cl_packetdup = Cvar_Get ("cl_packetdup", "1", CVAR_ARCHIVE_ND );
+	cl_cmdratecap = Cvar_Get("cl_cmdratecap", "0", CVAR_ARCHIVE);
 
 #ifndef TOURNAMENT_CLIENT
 	cl_timeNudge = Cvar_Get ("cl_timeNudge", "0", CVAR_TEMP );
@@ -3777,6 +3849,8 @@ void CL_Init( void ) {
 
 	cl_conXOffset = Cvar_Get ("cl_conXOffset", "0", 0);
 	cl_inGameVideo = Cvar_Get ("r_inGameVideo", "1", CVAR_ARCHIVE_ND );
+	
+	CL_UpdateVulkanAvailability();
 
 	cl_serverStatusResendTime = Cvar_Get ("cl_serverStatusResendTime", "750", 0);
 

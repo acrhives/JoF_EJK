@@ -61,7 +61,8 @@ typedef enum cgameEvent_e {
 	CGAME_EVENT_NONE=0,
 	CGAME_EVENT_TEAMMENU,
 	CGAME_EVENT_SCOREBOARD,
-	CGAME_EVENT_EDITHUD
+	CGAME_EVENT_EDITHUD,
+	CGAME_EVENT_RADIALMENU
 } cgameEvent_t;
 
 typedef struct autoMapInput_s {
@@ -715,6 +716,8 @@ typedef struct cgameImport_s {
 	qboolean		(*G2API_OverrideServer)					( void *serverInstance );
 	void			(*G2API_GetSurfaceName)					( void *ghoul2, int surfNumber, int modelIndex, char *fillBuf );
 
+	// --- EJK extensions (appended at end to preserve struct layout compatibility with stock OpenJK cgame DLLs) ---
+	void			(*GetRadialMenuState)					( qboolean *active, float *x, float *y );
 	struct {
 		float		(*R_Font_StrLenPixels)					( const char *text, const int iFontIndex, const float scale );
 	} ext;

@@ -2878,6 +2878,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 
 	// update cvars
 	CG_UpdateCvars();
+	CG_RadialMenuSync();
 
 	// if we are only updating the screen as a loading
 	// pacifier, don't even try to read snapshots
@@ -3047,7 +3048,7 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 			cg.predictedPlayerState.forceHandExtend == HANDEXTEND_KNOCKDOWN || cg.predictedPlayerState.fallingToDeath ||
 			cg.predictedPlayerState.m_iVehicleNum || PM_InKnockDown(&cg.predictedPlayerState))
 		{
-			if (!cg_thirdPerson.integer && cg_fpls.integer && (cg.predictedPlayerState.weapon == WP_SABER || cg.predictedPlayerState.weapon == WP_MELEE))
+			if (!cg_thirdPerson.integer && cg_fpls.integer && !(cg.snap->ps.pm_flags & PMF_FOLLOW) && (cg.predictedPlayerState.weapon == WP_SABER || cg.predictedPlayerState.weapon == WP_MELEE))
 			{ //force to first person for fpls
 				cg.renderingThirdPerson = qfalse;
 			}
@@ -3116,10 +3117,15 @@ void CG_DrawActiveFrame( int serverTime, stereoFrame_t stereoView, qboolean demo
 			CG_AddAllStrafeTrails();
 		}
 #endif
+	}
+
+	CG_AddViewWeapon( &cg.predictedPlayerState );
+
+	if (!cg.hyperspace)
+	{
 		if (cg_noFX.integer != 5)
 			trap->FX_AddScheduledEffects(qfalse);
 	}
-	CG_AddViewWeapon( &cg.predictedPlayerState );
 
 	// add buffered sounds
 	CG_PlayBufferedSounds();

@@ -67,12 +67,25 @@ static void CG_UpdateHUD(void) {
 				return;
 			case '0':
 			case '3':
+			case '4':
 				cgs.newHud = qtrue;
 				break;
 		}
 	}
 
 	CG_LoadHud_f();
+}
+
+void CG_SaberClashSizeChange()
+{
+	if (cg_saberClashSize.value > 2.0f)
+	{
+		trap->Cvar_Set("cg_saberClashSize", "2.0");
+	}
+	if (cg_saberClashSize.value < 0.0f)
+	{
+		trap->Cvar_Set("cg_saberClashSize", "0.0");
+	}
 }
 
 //Strafehelper colors

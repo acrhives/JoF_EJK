@@ -112,7 +112,7 @@ XCVAR_DEF( cg_duelMusic,						"1",	NULL,								CVAR_ARCHIVE )
 XCVAR_DEF( cg_saberHum,							"0",	NULL,								CVAR_ARCHIVE )
 
 //Visuals
-XCVAR_DEF( cg_remaps,							"1",	NULL,								CVAR_ARCHIVE|CVAR_LATCH )
+XCVAR_DEF( cg_remaps,							"2",	NULL,								CVAR_ARCHIVE|CVAR_LATCH )
 XCVAR_DEF( cg_instantDuck,						"0",	NULL,								CVAR_ARCHIVE )
 XCVAR_DEF( cg_screenShake,						"2",	NULL,								CVAR_ARCHIVE )
 XCVAR_DEF( cg_drawScreenTints,					"1",	NULL,								CVAR_ARCHIVE )
@@ -120,6 +120,8 @@ XCVAR_DEF( cg_cameraFPS,						"125",	CG_ClearThirdPersonDamp,			CVAR_ARCHIVE ) /
 XCVAR_DEF( cg_blood,							"0",	NULL,								CVAR_ARCHIVE ) //JAPRO - Clientside - re add cg_blood
 XCVAR_DEF( cg_thirdPersonFlagAlpha,				"1",	NULL,								CVAR_ARCHIVE )
 XCVAR_DEF( cg_stylePlayer,						"0",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_jetpackOnSound,					"1",	NULL,								CVAR_ARCHIVE )
+XCVAR_DEF( cg_jetpackHoverSound,				"1",	NULL,								CVAR_ARCHIVE )
 XCVAR_DEF( cg_headTurn,							"1",	NULL,								CVAR_NONE )
 
 XCVAR_DEF( cg_alwaysShowAbsorb,					"0",	NULL,								CVAR_ARCHIVE )
@@ -144,10 +146,15 @@ XCVAR_DEF( cg_jumpHeight,						"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_zoomSensitivity,					"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_leadIndicator,					"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_drawHitBox,						"0",	NULL,					CVAR_TEMP )
+XCVAR_DEF( cg_holsteredSaberBolt,				"rfemurX",	NULL,				CVAR_ROM )
+XCVAR_DEF( cg_holsteredSaberBolt2,				"lfemurX",	NULL,				CVAR_ROM )
+XCVAR_DEF( cg_holsteredSaberPos,				"0 3.5 0",	NULL,				CVAR_ROM )
+XCVAR_DEF( cg_holsteredSaberAng1,				"0 0 270",	NULL,				CVAR_ROM )
+XCVAR_DEF( cg_holsteredSaberAng2,				"0 0 270",	NULL,				CVAR_ROM )
 XCVAR_DEF( cg_drawPlayerNames,					"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_drawPlayerNamesScale,				"0.5",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_hideDuelerNames,					"0",	NULL,					CVAR_ARCHIVE )
-XCVAR_DEF( cg_drawInventory,					"1",	NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_drawInventory,					"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_drawPowerUpIcons,					"1",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_autoScreenshot,					"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_autoRecordDemo,					"0",	NULL,					CVAR_ARCHIVE )
@@ -180,7 +187,7 @@ XCVAR_DEF( cg_drawHud,							"1",		NULL,				CVAR_ARCHIVE )
 
 XCVAR_DEF( cg_predictKnockback,					"0",		NULL,				0 )
 
-XCVAR_DEF( cp_pluginDisable,					"1536",		NULL,				CVAR_ARCHIVE|CVAR_USERINFO ) //'enable' holstered saber (512) and ledge grab (1536) by default, to avoid missing JA+ animations
+XCVAR_DEF( cp_pluginDisable,					"1536",		NULL,				CVAR_ARCHIVE|CVAR_USERINFO ) //'enable' ledge grab (1536)
 XCVAR_DEF( com_maxFPS,							"125",		NULL,				CVAR_ARCHIVE )
 XCVAR_DEF( cg_displayCameraPosition,		"1 80 16",		NULL,				CVAR_ROM|CVAR_USERINFO )
 XCVAR_DEF( cg_displayNetSettings,			"125 0 125",	NULL,				CVAR_ROM|CVAR_USERINFO )
@@ -200,7 +207,6 @@ XCVAR_DEF( cg_grappleLineColor,					"1",		NULL,				CVAR_ARCHIVE_ND )
 //XCVAR_DEF( cg_predictRacemode,				"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_legstuck,							"0",	NULL,					CVAR_NONE )
 XCVAR_DEF( cg_specCameraMode,					"1",	NULL,					CVAR_ARCHIVE ) //ethan wants this archive
-XCVAR_DEF( cg_allowMemeVGS,						"0",	NULL,					CVAR_ARCHIVE )
 
 XCVAR_DEF( cg_centerHeight,						"0",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_centerSize,						"1",	NULL,					CVAR_ARCHIVE )
@@ -217,7 +223,7 @@ XCVAR_DEF( cg_strafeTrailRadius,				"2",	NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_strafeTrailFPS,					"40",	NULL,					0 )
 XCVAR_DEF( cg_strafeTrailGhost,					"1",	NULL,					CVAR_ARCHIVE )
 
-XCVAR_DEF( cg_drainFX,							"1",	NULL,					CVAR_NONE )
+XCVAR_DEF( cg_drainFX,							"1",	NULL,					CVAR_ARCHIVE )
 //Make maxpackets userinfo maybe idk
 
 #if 1
@@ -300,15 +306,13 @@ XCVAR_DEF( cg_fov,								"90",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_fovAspectAdjust,					"1",					NULL,					CVAR_ARCHIVE ) //fixed skyportal issue
 XCVAR_DEF( cg_fovViewmodel,						"80",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_fovViewmodelAdjust,				"1",					NULL,					CVAR_ARCHIVE ) // shifts viewmodels down above 90 fov
-XCVAR_DEF( cg_fpls,								"0",					NULL,					CVAR_NONE )
+XCVAR_DEF( cg_fpls,								"1",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_g2TraceLod,						"2",					NULL,					CVAR_NONE )
 XCVAR_DEF( cg_ghoul2Marks,						"16",					NULL,					CVAR_NONE )
 XCVAR_DEF( cg_gunX,								"0",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_gunY,								"0",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_gunZ,								"0",					NULL,					CVAR_ARCHIVE )
-XCVAR_DEF( cg_weaponBob,						"1",					NULL,					CVAR_ARCHIVE )
-XCVAR_DEF( cg_fallingBob,						"1",					NULL,					CVAR_ARCHIVE )
-XCVAR_DEF( cg_hudFiles,							"0",					CG_UpdateHUD,			CVAR_ARCHIVE )
+XCVAR_DEF( cg_hudFiles,							"3",					CG_UpdateHUD,			CVAR_ARCHIVE )
 XCVAR_DEF( cg_lagometer,						"0",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_lagometerX,						"48",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_lagometerY,						"144",					NULL,					CVAR_ARCHIVE )
@@ -323,6 +327,17 @@ XCVAR_DEF( cg_renderToTextureFX,				"1",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_repeaterOrb,						"0",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_runPitch,							"0",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_runRoll,							"0",					NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialDeadzone,					"48",					NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialRadius,						"140",					NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialOffset,						"0 0",					NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind1,						"amHug",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind2,						"amComeOn",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind3,						"amFlip",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind4,						"amKneel",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind5,						"amSit4",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind6,						"amVictory",			NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind7,						"amWon",				NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_radialBind8,						"Bow",					NULL,					CVAR_ARCHIVE )
 //allows us to trace between server frames on the client to see if we're visually
 //hitting the last entity we detected a hit on from the server.
 XCVAR_DEF( cg_saberClientVisualCompensation,	"1",					NULL,					CVAR_NONE )
@@ -332,6 +347,7 @@ XCVAR_DEF( cg_saberDynamicMarkTime,				"60000",				NULL,					CVAR_NONE )
 XCVAR_DEF( cg_saberModelTraceEffect,			"0",					NULL,					CVAR_NONE )
 XCVAR_DEF( cg_saberTrail,						"1",					NULL,					CVAR_ARCHIVE )
 XCVAR_DEF( cg_saberClash,						"1",					NULL,					CVAR_ARCHIVE )
+XCVAR_DEF( cg_saberClashSize,					"1.0",					CG_SaberClashSizeChange,CVAR_ARCHIVE )
 XCVAR_DEF( cg_shaderSaberCore,					"0.625",				NULL,					CVAR_NONE )
 XCVAR_DEF( cg_shaderSaberGlow,					"0.625",				NULL,					CVAR_NONE )//1.25?
 XCVAR_DEF( cg_saberTeamColors,					"1",					NULL,					CVAR_ARCHIVE )
@@ -412,3 +428,4 @@ XCVAR_DEF( ui_tm2_cnt,							"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 XCVAR_DEF( ui_tm3_cnt,							"0",					NULL,					CVAR_ROM|CVAR_INTERNAL )
 
 #undef XCVAR_DEF
+

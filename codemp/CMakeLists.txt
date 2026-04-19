@@ -23,6 +23,75 @@ endif(NOT InOpenJK)
 
 set(MPSharedDefines ${SharedDefines})
 
+# Get current git branch name
+execute_process(
+    COMMAND git rev-parse --abbrev-ref HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_BRANCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Fallback for non-git builds (zip releases, etc.)
+if(NOT GIT_BRANCH)
+    set(GIT_BRANCH "unknown")
+endif()
+
+if(GIT_BRANCH STREQUAL "master")
+    unset(GIT_BRANCH)
+endif()
+
+# Set default values if not defined
+if(NOT DEFINED JOF_VERSION_STRING)
+    # Local build: find latest release tag and append "dev"
+    execute_process(
+        COMMAND git tag --list --sort=-version:refname
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE _all_tags
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    set(_latest_release "")
+    if(_all_tags)
+        string(REPLACE "\n" ";" _tag_list "${_all_tags}")
+        foreach(_tag IN LISTS _tag_list)
+            if(_tag MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+                set(_latest_release "${_tag}")
+                break()
+            endif()
+        endforeach()
+    endif()
+    if(_latest_release)
+        set(JOF_VERSION_STRING "${_latest_release}")
+        set(JOF_VERSION_SUFFIX " dev")
+    else()
+        set(JOF_VERSION_STRING "dev")
+    endif()
+endif()
+
+if(NOT DEFINED JOF_VERSION_SUFFIX)
+    set(JOF_VERSION_SUFFIX "")
+endif()
+
+if(NOT DEFINED GIT_SHA)
+    set(GIT_SHA "local")
+endif()
+
+# Short commit SHA (7 chars, git-style)
+if(GIT_SHA STREQUAL "local")
+    set(GIT_SHA_SHORT "local")
+else()
+    string(SUBSTRING "${GIT_SHA}" 0 7 GIT_SHA_SHORT)
+endif()
+
+
+# Generate jofversion.h from jofversion.h.in
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/versionfile/jofversion.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/versionfile/jofversion.h
+    @ONLY
+)
+
 #    Add Game Project
 if(BuildMPGame)
 	add_subdirectory("${MPDir}/game")
@@ -59,6 +128,7 @@ if(BuildMPEngine OR BuildMPDed)
 		${SharedDir}
 		${MPDir}
 		"${GSLIncludeDirectory}"
+		${CMAKE_CURRENT_BINARY_DIR}/versionfile # Make sure the generated jofversion.h is found by all subsequent includes
 		)
 	set(MPBotlibBotlibFiles
 		"${MPDir}/botlib/aasfile.h"
@@ -363,6 +433,9 @@ if(BuildMPEngine)
 	set(MPEngineFiles ${MPEngineAndDedFiles})
 	set(MPEngineDefines ${MPSharedDefines})
 
+	list(APPEND MPEngineIncludeDirectories ${CMAKE_CURRENT_BINARY_DIR}/versionfile) # Make sure the generated jofversion.h is found by all subsequent includes
+
+
 	#    Dependencies
 
 	if (NOT WIN32)
@@ -371,17 +444,17 @@ if(BuildMPEngine)
 		set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OPENGL_INCLUDE_DIR})
 		set(MPEngineLibraries ${MPEngineLibraries} ${OPENGL_LIBRARIES})
 		
+		# Discord Rich Presence
 		if(BuildDiscordRichPresence)
-			if (APPLE)
+			if (APPLE AND Architecture MATCHES "x86_64")
 				set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OpenJKLibDir}/discord-rpc/include)
 				set(MPEngineDefines ${MPEngineDefines} "DISCORD")
 				set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/osx/libdiscord-rpc.a)
-			elseif(Architecture MATCHES "x86_64")
+			elseif(UNIX AND Architecture MATCHES "x86_64")
 				set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OpenJKLibDir}/discord-rpc/include)
 				set(MPEngineDefines ${MPEngineDefines} "DISCORD")
-                set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/libdiscord-rpc.so)
-				#set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/libdiscord-rpc.a)
-			endif(APPLE)
+				set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/libdiscord-rpc.a)
+			endif()
 		endif(BuildDiscordRichPresence)
 	endif()
 
@@ -400,12 +473,16 @@ if(BuildMPEngine)
 			set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OPENAL_INCLUDE_DIR})
 			set(MPEngineLibraries ${MPEngineLibraries} ${OPENAL_LIBRARY})
 		endif(UseInternalOpenAL)
-		
-		if(BuildDiscordRichPresence)
-			set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OpenJKLibDir}/discord-rpc/include)
-			set(MPEngineDefines ${MPEngineDefines} "DISCORD")
-			set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/discord-rpc.lib)
-		endif(BuildDiscordRichPresence)
+	endif()
+
+	if(MSVC AND BuildDiscordRichPresence)
+		set(MPEngineIncludeDirectories ${MPEngineIncludeDirectories} ${OpenJKLibDir}/discord-rpc/include)
+		set(MPEngineDefines ${MPEngineDefines} "DISCORD")
+		if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+			set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/x86/discord-rpc.lib)
+		else()
+			set(MPEngineLibraries ${MPEngineLibraries} ${OpenJKLibDir}/discord-rpc/lib/x64/discord-rpc.lib)
+		endif()
 	endif()
 
 	if(UseInternalSDL2)
@@ -418,8 +495,8 @@ if(BuildMPEngine)
 		else()
 			set(MPEngineLibraries
 				${MPEngineLibraries}
-				${OpenJKLibDir}/SDL2/lib/x64/SDL2main.lib
-				${OpenJKLibDir}/SDL2/lib/x64/SDL2.lib
+				${OpenJKLibDir}/SDL2/lib/x64/SDL2main.x86_64.lib
+				${OpenJKLibDir}/SDL2/lib/x64/SDL2.x86_64.lib
 				)
 		endif()
 
@@ -598,7 +675,7 @@ if(BuildMPEngine)
 					)
 			else()
 				set(MPEngineExtraInstallFiles
-					${OpenJKLibDir}/SDL2/bin/x64/SDL2.dll
+					${OpenJKLibDir}/SDL2/bin/x64/SDL2.x86_64.dll
 					)
 			endif()
 		endif()
@@ -641,7 +718,19 @@ if(BuildMPEngine)
 
 	set_target_properties(${MPEngine} PROPERTIES INCLUDE_DIRECTORIES "${MPEngineIncludeDirectories}")
 	set_target_properties(${MPEngine} PROPERTIES PROJECT_LABEL "MP Client")
-	target_link_libraries(${MPEngine} ${MPEngineLibraries})
+	target_link_libraries(${MPEngine} PRIVATE ${MPEngineLibraries} ${MPCGame} ${MPUI} ${MPVanillaRenderer})
+
+	# Ensure asset pk3s are built with the client and copied next to the exe
+	add_dependencies(${MPEngine} Assets)
+	add_custom_command(TARGET ${MPEngine} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${MPEngine}>/EternalJK"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_BINARY_DIR}/japro-assets.pk3"
+			"$<TARGET_FILE_DIR:${MPEngine}>/EternalJK/japro-assets.pk3"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_BINARY_DIR}/jofclient-assets.pk3"
+			"$<TARGET_FILE_DIR:${MPEngine}>/EternalJK/jofclient-assets.pk3"
+	)
 endif(BuildMPEngine)
 
 #        Dedicated Server (Engine) (jampded.exe)
@@ -651,6 +740,8 @@ if(BuildMPDed)
 	set(MPDedIncludeDirectories ${MPEngineAndDedIncludeDirectories})
 	set(MPDedFiles ${MPEngineAndDedFiles})
 	set(MPDedDefines ${MPSharedDefines} "_CONSOLE" "DEDICATED")
+	
+	list(APPEND MPDedIncludeDirectories ${CMAKE_CURRENT_BINARY_DIR}/versionfile) # Make sure the generated jofversion.h is found by all subsequent includes
 
 	# Dedicated renderer is compiled with the server.
 	set(MPDedicatedRendererFiles
@@ -778,10 +869,13 @@ endif()
 
 add_zip_command(japro-assets.pk3
 	FILES ${CMAKE_SOURCE_DIR}/assets/japro/*)
+add_zip_command(jofclient-assets.pk3
+	FILES ${CMAKE_SOURCE_DIR}/assets/jofclient/*)
 add_custom_target(Assets
 	ALL
-	DEPENDS japro-assets.pk3)
+	DEPENDS japro-assets.pk3 jofclient-assets.pk3)
 install(FILES
 		${CMAKE_CURRENT_BINARY_DIR}/japro-assets.pk3
+		${CMAKE_CURRENT_BINARY_DIR}/jofclient-assets.pk3
 	DESTINATION "${JKAInstallDir}/EternalJK"
 	COMPONENT ${JKAMPCoreComponent})

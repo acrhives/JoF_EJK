@@ -400,6 +400,13 @@ static rserr_t GLimp_CreateOpenGLWindow(
 	stencilBits = r_stencilbits->integer;
 	samples = r_ext_multisample->integer;
 
+	// Reset all SDL GL attributes to defaults before configuring.
+	// This prevents stale settings (e.g. rend2's Core Profile 3.2) from
+	// persisting when a different renderer creates a new context.
+	// Without this, switching from rend2 to vanilla gives vanilla a Core Profile
+	// context, causing glGetString(GL_EXTENSIONS) to return NULL and crash.
+	SDL_GL_ResetAttributes();
+
 	for (int i = 0; i < 16; i++)
 	{
 		int testColorBits, testDepthBits, testStencilBits;
@@ -734,20 +741,6 @@ static rserr_t GLimp_SetMode(
 	{
 #if 1
 		int w = glConfig->vidWidth, h = glConfig->vidHeight;
-		if (windowDesc->api == GRAPHICS_API_VULKAN) {
-			if (fullscreen || (noborder && (mode == -2 || (mode == -1 && glConfig->vidWidth >= desktopMode.w && glConfig->vidHeight >= desktopMode.h)))) //lol
-			{
-				w = desktopMode.w;
-				h = desktopMode.h;
-				x = 0;
-				y = 0;
-				fullscreen = qfalse;
-				noborder = qtrue;
-				flags &= ~SDL_WINDOW_FULLSCREEN;
-				//if (!noborder)
-				flags |= SDL_WINDOW_BORDERLESS;
-			}
-		}
 
 		// Just create a regular window
 		screen = SDL_CreateWindow(

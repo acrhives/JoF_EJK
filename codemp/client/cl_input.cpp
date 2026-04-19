@@ -31,6 +31,10 @@ along with this program; if not, see <http://www.gnu.org/licenses/>.
 #endif
 unsigned	frame_msec;
 int			old_com_frameTime;
+#define		CMDRATECAP_HZ 125
+#define		CMDRATECAP_MSEC (1000 / CMDRATECAP_HZ)   // = 8ms
+int         cmdratecap_lastFireTime;
+int			cmdratecap_commandGenerated = 0;
 
 float cl_mPitchOverride = 0.0f;
 float cl_mYawOverride = 0.0f;
@@ -68,6 +72,7 @@ kbutton_t	in_left, in_right, in_forward, in_back;
 kbutton_t	in_lookup, in_lookdown, in_moveleft, in_moveright;
 kbutton_t	in_strafe, in_speed;
 kbutton_t	in_up, in_down;
+kbutton_t	in_radialmenu;
 
 #define MAX_KBUTTONS 16
 
@@ -754,6 +759,29 @@ void IN_SpeedUp(void) {IN_KeyUp(&in_speed);}
 
 void IN_StrafeDown(void) {IN_KeyDown(&in_strafe);}
 void IN_StrafeUp(void) {IN_KeyUp(&in_strafe);}
+
+static qboolean CL_RadialMenuInputAllowed( void ) {
+	return (qboolean)( cls.state == CA_ACTIVE && !clc.demoplaying && Key_GetCatcher() == 0 );
+}
+
+void IN_RadialMenuDown( void ) {
+	const qboolean wasActive = in_radialmenu.active;
+	IN_KeyDown( &in_radialmenu );
+
+	if ( !wasActive && in_radialmenu.active && CL_RadialMenuInputAllowed() ) {
+		cl.radialMenuActive = qtrue;
+		cl.radialMenuX = 0.0f;
+		cl.radialMenuY = 0.0f;
+	}
+}
+
+void IN_RadialMenuUp( void ) {
+	IN_KeyUp( &in_radialmenu );
+
+	if ( !in_radialmenu.active ) {
+		cl.radialMenuActive = qfalse;
+	}
+}
 
 #if 0
 void IN_Button0Down(void) {IN_KeyDown(&in_buttons[0]);}
@@ -1562,6 +1590,13 @@ void CL_MouseMove( usercmd_t *cmd ) {
 	mx *= cl.cgameSensitivity;
 	my *= cl.cgameSensitivity;
 
+	if ( cl.radialMenuActive ) {
+		const float radialScale = 5.0f;
+		cl.radialMenuX += mx * radialScale;
+		cl.radialMenuY += my * radialScale;
+		return;
+	}
+
 	// add mouse X/Y movement to cmd
 	if ( in_strafe.active )
 		cmd->rightmove = ClampChar( cmd->rightmove + m_side->value * mx );
@@ -1828,6 +1863,27 @@ void CL_CreateNewCommands( void ) {
 	if ( cls.state < CA_PRIMED )
 		return;
 
+	// cl_cmdratecap: when enabled, cap command generation at 125Hz.
+	// Uses fixed-step accumulator — advance by CMDRATECAP_MSEC on fire,
+	// carrying overshoot forward so cmds land at steady 8ms intervals.
+	// Button wasPressed and gcmdValue persist across skipped frames naturally.
+	if (cl_cmdratecap->integer) {
+		int elapsed = com_frameTime - cmdratecap_lastFireTime;
+		if (elapsed < CMDRATECAP_MSEC) {
+			return;
+		}
+
+		// Advance by exactly CMDRATECAP_MSEC, not com_frameTime.
+		// This preserves overshoot so we average exactly 125 cmds/sec.
+		cmdratecap_lastFireTime += CMDRATECAP_MSEC;
+
+		// Safety clamp: if we fell way behind (hitch/alt-tab), snap forward
+		// to prevent a burst of rapid cmds trying to catch up.
+		if (com_frameTime - cmdratecap_lastFireTime > CMDRATECAP_MSEC * 2) {
+			cmdratecap_lastFireTime = com_frameTime;
+		}
+	}
+
 	frame_msec = com_frameTime - old_com_frameTime;
 
 	// if running over 1000fps, act as if each frame is 1ms
@@ -1842,6 +1898,7 @@ void CL_CreateNewCommands( void ) {
 
 	old_com_frameTime = com_frameTime;
 	// generate a command for this frame
+	cmdratecap_commandGenerated = 1;
 	cl.cmdNumber++;
 	cmdNum = cl.cmdNumber & REAL_CMD_MASK;//Loda - FPS UNLOCK ENGINE
 	cl.cmds[cmdNum] = CL_CreateCmd ();
@@ -2131,6 +2188,8 @@ static const cmdList_t inputCmds[] =
 	{ "-moveright", NULL, IN_MoverightUp, NULL },
 	{ "+speed", "Walk or run", IN_SpeedDown, NULL },
 	{ "-speed", NULL, IN_SpeedUp, NULL },
+	{ "+radialmenu", "Open radial menu", IN_RadialMenuDown, NULL },
+	{ "-radialmenu", NULL, IN_RadialMenuUp, NULL },
 	{ "+attack", "Primary Attack", IN_Button0Down, NULL },
 	{ "-attack", NULL, IN_Button0Up, NULL },
 	{ "+use", "Use item", IN_Button5Down, NULL },
@@ -2229,6 +2288,7 @@ void CL_InitInput( void ) {
 	cl_debugMove = Cvar_Get ("cl_debugMove", "0", 0);
 
 	cl_idrive = Cvar_Get ("cl_idrive", "0", CVAR_ARCHIVE);//JAPRO ENGINE
+	cmdratecap_lastFireTime = 0;
 }
 
 /*
