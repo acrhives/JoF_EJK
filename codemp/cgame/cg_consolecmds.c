@@ -35,17 +35,17 @@ CG_TargetCommand_f
 
 =================
 */
-void CG_TargetCommand_f( void ) {
+void CG_TargetCommand_f(void) {
 	int		targetNum;
 	char	test[4];
 
 	targetNum = CG_CrosshairPlayer();
-	if ( targetNum == -1 ) {
+	if (targetNum == -1) {
 		return;
 	}
 
-	trap->Cmd_Argv( 1, test, 4 );
-	trap->SendClientCommand( va( "gc %i %i", targetNum, atoi( test ) ) );
+	trap->Cmd_Argv(1, test, 4);
+	trap->SendClientCommand(va("gc %i %i", targetNum, atoi(test)));
 }
 
 /*
@@ -55,8 +55,8 @@ CG_SizeUp_f
 Keybinding command
 =================
 */
-static void CG_SizeUp_f (void) {
-	trap->Cvar_Set( "cg_viewsize", va( "%i", Q_min( cg_viewsize.integer + 10, 100 ) ) );
+static void CG_SizeUp_f(void) {
+	trap->Cvar_Set("cg_viewsize", va("%i", Q_min(cg_viewsize.integer + 10, 100)));
 }
 
 /*
@@ -66,8 +66,8 @@ CG_SizeDown_f
 Keybinding command
 =================
 */
-static void CG_SizeDown_f (void) {
-	trap->Cvar_Set( "cg_viewsize", va( "%i", Q_max( cg_viewsize.integer - 10, 30 ) ) );
+static void CG_SizeDown_f(void) {
+	trap->Cvar_Set("cg_viewsize", va("%i", Q_max(cg_viewsize.integer - 10, 30)));
 }
 
 /*
@@ -77,12 +77,11 @@ CG_Viewpos_f
 Debugging command to print the current position
 =============
 */
-static void CG_Viewpos_f (void) {
-	trap->Print ("%s (%i %i %i) : %i\n", cgs.mapname, (int)cg.refdef.vieworg[0],
+static void CG_Viewpos_f(void) {
+	trap->Print("%s (%i %i %i) : %i\n", cgs.mapname, (int)cg.refdef.vieworg[0],
 		(int)cg.refdef.vieworg[1], (int)cg.refdef.vieworg[2],
 		(int)cg.refdef.viewangles[YAW]);
 }
-
 
 static void CG_TeleOffset_f(void) {
 
@@ -90,7 +89,7 @@ static void CG_TeleOffset_f(void) {
 	float offsetX = 0, offsetY = 0, offsetZ = 0;
 
 	VectorCopy(cg.predictedPlayerState.origin, offsetPos);
-	
+
 	switch (trap->Cmd_Argc())
 	{
 	case 2:
@@ -98,7 +97,7 @@ static void CG_TeleOffset_f(void) {
 		offsetPos[0] += offsetX;
 
 		trap->SendClientCommand(va("amtele %f %f %f %f",
-		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+			offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
 		break;
 
 	case 3:
@@ -108,7 +107,7 @@ static void CG_TeleOffset_f(void) {
 		offsetPos[1] += offsetY;
 
 		trap->SendClientCommand(va("amtele %f %f %f %f",
-		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+			offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
 		break;
 
 	case 4:
@@ -120,19 +119,19 @@ static void CG_TeleOffset_f(void) {
 		offsetPos[2] += offsetZ;
 
 		trap->SendClientCommand(va("amtele %f %f %f %f",
-		offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
+			offsetPos[0], offsetPos[1], offsetPos[2], cg.predictedPlayerState.viewangles[YAW]));
 		break;
-	
+
 	default:
 		Com_Printf("Usage: amteleoffset x y z\n");
 		return;
 	}
 }
 
-static void CG_PTelemark_f (void) {
+static void CG_PTelemark_f(void) {
 	int x, y, z, yaw;
 
-	if ((cg.clientNum == cg.predictedPlayerState.clientNum && !cg.demoPlayback) || !cg.snap ) {
+	if ((cg.clientNum == cg.predictedPlayerState.clientNum && !cg.demoPlayback) || !cg.snap) {
 		x = cg.predictedPlayerState.origin[0];
 		y = cg.predictedPlayerState.origin[1];
 		z = cg.predictedPlayerState.origin[2];
@@ -153,7 +152,7 @@ static void CG_PTelemark_f (void) {
 	trap->Print("Telemark set (%i %i %i) : %i\n", x, y, z, yaw);
 }
 
-static void CG_PTele_f (void) {
+static void CG_PTele_f(void) {
 	if (cg.telemarkX || cg.telemarkY || cg.telemarkZ || cg.telemarkYaw)
 		trap->SendConsoleCommand(va("setviewpos %i %i %i %i\n", cg.telemarkX, cg.telemarkY, cg.telemarkZ, cg.telemarkYaw));
 	else
@@ -166,22 +165,23 @@ CG_ScoresDown_f
 
 =================
 */
-static void CG_ScoresDown_f( void ) {
+static void CG_ScoresDown_f(void) {
 
 	CG_BuildSpectatorString();
-	if ( !cg.demoPlayback && cg.scoresRequestTime + 2000 < cg.time ) { //don't clear the scoreboard when watching a demo
+	if (!cg.demoPlayback && cg.scoresRequestTime + 2000 < cg.time) { //don't clear the scoreboard when watching a demo
 		// the scores are more than two seconds out of data,
 		// so request new ones
 		cg.scoresRequestTime = cg.time;
-		trap->SendClientCommand( "score" );
+		trap->SendClientCommand("score");
 
 		// leave the current scores up if they were already
 		// displayed, but if this is the first hit, clear them out
-		if ( !cg.showScores ) {
+		if (!cg.showScores) {
 			cg.showScores = qtrue;
 			cg.numScores = 0;
 		}
-	} else {
+	}
+	else {
 		// show the cached contents even if they just pressed if it
 		// is within two seconds
 		cg.showScores = qtrue;
@@ -195,58 +195,113 @@ CG_ScoresUp_f
 
 =================
 */
-static void CG_ScoresUp_f( void ) {
-	if ( cg.showScores ) {
+static void CG_ScoresUp_f(void) {
+	if (cg.showScores) {
 		cg.showScores = qfalse;
 		cg.scoreFadeTime = cg.time;
 	}
 	cg.pressingScoreBoard = qfalse;
 }
 
-void CG_ClientList_f( void )
+static int CG_ClientListPing(int clientNum)
 {
-	clientInfo_t *ci;
+	int i;
+
+	for (i = 0; i < MAX_CLIENTS; i++)
+	{
+		if (cg.scores[i].client == clientNum)
+			return cg.scores[i].ping;
+	}
+
+	return -1;
+}
+
+static const char* CG_ClientListModel(const clientInfo_t* ci)
+{
+	if (!VALIDSTRING(ci->modelName))
+		return "unknown";
+
+	if (VALIDSTRING(ci->skinName) && Q_stricmp(ci->skinName, "default"))
+		return va("%s/%s", ci->modelName, ci->skinName);
+
+	return ci->modelName;
+}
+
+static void CG_ClientListPrintPadded(const char* string, int width)
+{
+	int len = Q_PrintStrlen(string);
+
+	Com_Printf("%s", string);
+	while (len < width)
+	{
+		Com_Printf(" ");
+		len++;
+	}
+}
+void CG_ClientList_f(void)
+{
+	clientInfo_t* ci;
 	int i;
 	int count = 0;
 
-	for( i = 0; i < MAX_CLIENTS; i++ )
+	for (i = 0; i < MAX_CLIENTS; i++)
 	{
-		ci = &cgs.clientinfo[ i ];
-		if( !ci->infoValid )
+		ci = &cgs.clientinfo[i];
+		if (!ci->infoValid)
 			continue;
 
-		switch( ci->team )
+		switch (ci->team)
 		{
 		case TEAM_FREE:
-			Com_Printf( "%2d " S_COLOR_YELLOW "F   " S_COLOR_WHITE "%s" S_COLOR_WHITE "%s\n", i, ci->name, (ci->botSkill != -1) ? " (bot)" : "" );
+			Com_Printf("%2d " S_COLOR_YELLOW "F   ", i);
 			break;
 
 		case TEAM_RED:
-			Com_Printf( "%2d " S_COLOR_RED "R   " S_COLOR_WHITE "%s" S_COLOR_WHITE "%s\n", i,
-				ci->name, (ci->botSkill != -1) ? " (bot)" : "" );
+			Com_Printf("%2d " S_COLOR_RED "R   ", i);
 			break;
 
 		case TEAM_BLUE:
-			Com_Printf( "%2d " S_COLOR_BLUE "B   " S_COLOR_WHITE "%s" S_COLOR_WHITE "%s\n", i,
-				ci->name, (ci->botSkill != -1) ? " (bot)" : "" );
+			Com_Printf("%2d " S_COLOR_BLUE "B   ", i);
 			break;
 
 		default:
 		case TEAM_SPECTATOR:
-			Com_Printf( "%2d " S_COLOR_YELLOW "S   " S_COLOR_WHITE "%s" S_COLOR_WHITE "%s\n", i, ci->name, (ci->botSkill != -1) ? " (bot)" : "" );
+			Com_Printf("%2d " S_COLOR_YELLOW "S   ", i);
 			break;
+		}
+
+		{
+			char nameField[MAX_NETNAME + 3];
+			char modelField[MAX_QPATH * 2 + 8];
+			char pingField[16];
+			const int ping = CG_ClientListPing(i);
+
+			Com_sprintf(nameField, sizeof(nameField), "\"%s^7\"", ci->name);
+			Com_sprintf(modelField, sizeof(modelField), "%s", CG_ClientListModel(ci));
+			if (ping >= 0)
+				Com_sprintf(pingField, sizeof(pingField), "%d", ping);
+			else
+				Com_sprintf(pingField, sizeof(pingField), "\"unknown\"");
+
+			Com_Printf(S_COLOR_WHITE "Name: ");
+			CG_ClientListPrintPadded(nameField, 40);
+			Com_Printf(" Model: ");
+			CG_ClientListPrintPadded(modelField, 40);
+			Com_Printf(" Ping: ");
+			CG_ClientListPrintPadded(pingField, 10);
+			Com_Printf("%s\n", (ci->botSkill != -1) ? " (bot)" : "");
 		}
 
 		count++;
 	}
 
-	Com_Printf( "Listed %2d clients\n", count );
+	Com_Printf("Listed %2d clients\n", count);
 }
 
 static void CG_UserInfoList_f(void)
 {
-	clientInfo_t *ci;
-	centity_t *cent;
+	clientInfo_t* ci;
+	centity_t* cent;
 	int i;
 	int r, g, b;
 
@@ -264,24 +319,24 @@ static void CG_UserInfoList_f(void)
 		if (!VALIDSTRING(ci->name) || !VALIDSTRING(ci->modelName))
 			continue;
 
-		switch( ci->team )
+		switch (ci->team)
 		{
-			case TEAM_FREE:
-				Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_YELLOW "F   " S_COLOR_WHITE "%s ", i, ci->name);
-					break;
+		case TEAM_FREE:
+			Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_YELLOW "F   " S_COLOR_WHITE "%s ", i, ci->name);
+			break;
 
-			case TEAM_RED:
-				Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_RED "R   " S_COLOR_WHITE "%s ", i, ci->name);
-					break;
+		case TEAM_RED:
+			Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_RED "R   " S_COLOR_WHITE "%s ", i, ci->name);
+			break;
 
-			case TEAM_BLUE:
-				Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_BLUE "B   " S_COLOR_WHITE "%s ", i, ci->name);
-					break;
+		case TEAM_BLUE:
+			Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_BLUE "B   " S_COLOR_WHITE "%s ", i, ci->name);
+			break;
 
-			default:
-			case TEAM_SPECTATOR:
-				Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_WHITE "S   " S_COLOR_WHITE "%s ", i, ci->name);
-				break;
+		default:
+		case TEAM_SPECTATOR:
+			Com_Printf(S_COLOR_WHITE "%2d " S_COLOR_WHITE "S   " S_COLOR_WHITE "%s ", i, ci->name);
+			break;
 		}
 
 		if (VALIDSTRING(ci->modelName)) {
@@ -299,86 +354,86 @@ static void CG_UserInfoList_f(void)
 		if (VALIDSTRING(ci->saberName)) {
 			Com_Printf(S_COLOR_WHITE "%s ", ci->saberName);
 			switch (ci->icolor1) {
-				default:
-				case SABER_RED:
-					Com_Printf(S_COLOR_RED "(Red) ");
-					break;
-				case SABER_ORANGE:
-					Com_Printf(S_COLOR_ORANGE "(Orange) ");
-					break;
-				case SABER_YELLOW:
-					Com_Printf(S_COLOR_YELLOW "(Yellow) ");
-					break;
-				case SABER_GREEN:
-					Com_Printf(S_COLOR_GREEN "(Green) ");
-					break;
-				case SABER_BLUE:
-					Com_Printf(S_COLOR_BLUE "(Blue) ");
-					break;
-				case SABER_PURPLE:
-					Com_Printf(S_COLOR_MAGENTA "(Purple) ");
-					break;
-				case SABER_RGB:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(RGB) "); //todo: parse RGB col, ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]or
-					break;
-				case SABER_FLAME1:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #1) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
-					break;
-				case SABER_ELEC1:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #1) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
-					break;
-				case SABER_FLAME2:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #2) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
-					break;
-				case SABER_ELEC2:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #2) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
-					break;
-				case SABER_BLACK:
-					Com_Printf(S_COLOR_GREY "(Black) ");
-					break;
+			default:
+			case SABER_RED:
+				Com_Printf(S_COLOR_RED "(Red) ");
+				break;
+			case SABER_ORANGE:
+				Com_Printf(S_COLOR_ORANGE "(Orange) ");
+				break;
+			case SABER_YELLOW:
+				Com_Printf(S_COLOR_YELLOW "(Yellow) ");
+				break;
+			case SABER_GREEN:
+				Com_Printf(S_COLOR_GREEN "(Green) ");
+				break;
+			case SABER_BLUE:
+				Com_Printf(S_COLOR_BLUE "(Blue) ");
+				break;
+			case SABER_PURPLE:
+				Com_Printf(S_COLOR_MAGENTA "(Purple) ");
+				break;
+			case SABER_RGB:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(RGB) "); //todo: parse RGB col, ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]or
+				break;
+			case SABER_FLAME1:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #1) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
+				break;
+			case SABER_ELEC1:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #1) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
+				break;
+			case SABER_FLAME2:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #2) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
+				break;
+			case SABER_ELEC2:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #2) ", ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]);
+				break;
+			case SABER_BLACK:
+				Com_Printf(S_COLOR_GREY "(Black) ");
+				break;
 			}
 		}
 
 		if (VALIDSTRING(ci->saber2Name) && strlen(ci->saber2Name) && Q_stricmp(ci->saber2Name, "none")) {
 			Com_Printf(S_COLOR_WHITE "%s ", ci->saber2Name);
 			switch (ci->icolor2) {
-				default:
-				case SABER_RED:
-					Com_Printf(S_COLOR_RED "(Red) ");
-					break;
-				case SABER_ORANGE:
-					Com_Printf(S_COLOR_ORANGE "(Orange) ");
-					break;
-				case SABER_YELLOW:
-					Com_Printf(S_COLOR_YELLOW "(Yellow) ");
-					break;
-				case SABER_GREEN:
-					Com_Printf(S_COLOR_GREEN "(Green) ");
-					break;
-				case SABER_BLUE:
-					Com_Printf(S_COLOR_BLUE "(Blue) ");
-					break;
-				case SABER_PURPLE:
-					Com_Printf(S_COLOR_MAGENTA "(Purple) ");
-					break;
-				case SABER_RGB:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(RGB) "); //todo: parse RGB col, ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]or
-					break;
-				case SABER_FLAME1:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #1) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
-					break;
-				case SABER_ELEC1:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #1) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
-					break;
-				case SABER_FLAME2:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #2) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
-					break;
-				case SABER_ELEC2:
-					Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #2) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
-					break;
-				case SABER_BLACK:
-					Com_Printf(S_COLOR_GREY "(Black) ");
-					break;
+			default:
+			case SABER_RED:
+				Com_Printf(S_COLOR_RED "(Red) ");
+				break;
+			case SABER_ORANGE:
+				Com_Printf(S_COLOR_ORANGE "(Orange) ");
+				break;
+			case SABER_YELLOW:
+				Com_Printf(S_COLOR_YELLOW "(Yellow) ");
+				break;
+			case SABER_GREEN:
+				Com_Printf(S_COLOR_GREEN "(Green) ");
+				break;
+			case SABER_BLUE:
+				Com_Printf(S_COLOR_BLUE "(Blue) ");
+				break;
+			case SABER_PURPLE:
+				Com_Printf(S_COLOR_MAGENTA "(Purple) ");
+				break;
+			case SABER_RGB:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(RGB) "); //todo: parse RGB col, ci->rgb1[0], ci->rgb1[1], ci->rgb1[2]or
+				break;
+			case SABER_FLAME1:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #1) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
+				break;
+			case SABER_ELEC1:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #1) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
+				break;
+			case SABER_FLAME2:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Flame #2) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
+				break;
+			case SABER_ELEC2:
+				Com_Printf(S_COLOR_WHITE "[%.0f %.0f %.0f] " S_COLOR_CYAN "(Electric #2) ", ci->rgb2[0], ci->rgb2[1], ci->rgb2[2]);
+				break;
+			case SABER_BLACK:
+				Com_Printf(S_COLOR_GREY "(Black) ");
+				break;
 			}
 		}
 
@@ -399,34 +454,34 @@ static void CG_UserInfoList_f(void)
 	}
 }
 
-static void CG_TellTarget_f( void ) {
+static void CG_TellTarget_f(void) {
 	int		clientNum;
-	char	command[MAX_SAY_TEXT+10];
+	char	command[MAX_SAY_TEXT + 10];
 	char	message[MAX_SAY_TEXT];
 
 	clientNum = CG_CrosshairPlayer();
-	if ( clientNum == -1 ) {
+	if (clientNum == -1) {
 		return;
 	}
 
-	trap->Cmd_Args( message, sizeof(message) );
-	Com_sprintf( command, sizeof(command), "tell %i %s", clientNum, message );
-	trap->SendClientCommand( command );
+	trap->Cmd_Args(message, sizeof(message));
+	Com_sprintf(command, sizeof(command), "tell %i %s", clientNum, message);
+	trap->SendClientCommand(command);
 }
 
-static void CG_TellAttacker_f( void ) {
+static void CG_TellAttacker_f(void) {
 	int		clientNum;
 	char	command[MAX_SAY_TEXT + 10];
 	char	message[MAX_SAY_TEXT];
 
 	clientNum = CG_LastAttacker();
-	if ( clientNum == -1 ) {
+	if (clientNum == -1) {
 		return;
 	}
 
-	trap->Cmd_Args( message, sizeof(message) );
-	Com_sprintf( command, sizeof(command), "tell %i %s", clientNum, message );
-	trap->SendClientCommand( command );
+	trap->Cmd_Args(message, sizeof(message));
+	Com_sprintf(command, sizeof(command), "tell %i %s", clientNum, message);
+	trap->SendClientCommand(command);
 }
 
 /*
@@ -435,17 +490,18 @@ CG_StartOrbit_f
 ==================
 */
 
-static void CG_StartOrbit_f( void ) {
+static void CG_StartOrbit_f(void) {
 	char var[MAX_TOKEN_CHARS];
 
-	trap->Cvar_VariableStringBuffer( "developer", var, sizeof( var ) );
-	if ( !atoi(var) ) {
+	trap->Cvar_VariableStringBuffer("developer", var, sizeof(var));
+	if (!atoi(var)) {
 		return;
 	}
 	if (cg_cameraOrbit.value != 0) {
-		trap->Cvar_Set ("cg_cameraOrbit", "0");
+		trap->Cvar_Set("cg_cameraOrbit", "0");
 		trap->Cvar_Set("cg_thirdPerson", "0");
-	} else {
+	}
+	else {
 		trap->Cvar_Set("cg_cameraOrbit", "5");
 		trap->Cvar_Set("cg_thirdPerson", "1");
 		trap->Cvar_Set("cg_thirdPersonAngle", "0");
@@ -506,13 +562,13 @@ static void CG_SiegeCompleteCvarUpdate_f(void)
 	CG_SiegeBriefingDisplay(SIEGETEAM_TEAM2, 1);
 }
 
-void CG_LoadHud_f( void ) {
-	const char *hudSet;
+void CG_LoadHud_f(void) {
+	const char* hudSet;
 
-	if ( cg.loading )
+	if (cg.loading)
 		return;
 
-	if ( cgs.newHud && cg_hudFiles.integer == 3 ) {
+	if (cgs.newHud && cg_hudFiles.integer == 3) {
 		hudSet = "ui/elegance_hud.txt";
 	}
 	else if ( cgs.newHud && cg_hudFiles.integer == 4 ) {
@@ -520,7 +576,7 @@ void CG_LoadHud_f( void ) {
 	}
 	else {
 		hudSet = cg_hudFiles.string;
-		if ( !VALIDSTRING(hudSet) )
+		if (!VALIDSTRING(hudSet))
 		{
 			hudSet = "ui/jahud.txt";
 		}
@@ -528,10 +584,10 @@ void CG_LoadHud_f( void ) {
 
 	String_Init();
 	Menu_Reset();
-	CG_LoadMenus( hudSet );
+	CG_LoadMenus(hudSet);
 }
 
-void CG_SanitizeString2(const char *in, char *out)
+void CG_SanitizeString2(const char* in, char* out)
 {
 	int i = 0, r = 0;
 
@@ -560,9 +616,9 @@ void CG_SanitizeString2(const char *in, char *out)
 	out[r] = 0;
 }
 
-static int CG_ClientNumberFromString(const char *s)
+static int CG_ClientNumberFromString(const char* s)
 {
-	clientInfo_t *cl;
+	clientInfo_t* cl;
 	int			idnum, i, match = -1;
 	char		s2[MAX_STRING_CHARS];
 	char		n2[MAX_STRING_CHARS];
@@ -644,7 +700,7 @@ static void CG_IgnoreVGS_f(void)
 {
 	if (trap->Cmd_Argc() == 1) {
 		int i;
-		clientInfo_t *cl;
+		clientInfo_t* cl;
 
 		Com_Printf("VGS Ignored client(s):\n");
 		for (i = 0, cl = cgs.clientinfo; i < cgs.maxclients; ++i, ++cl) {
@@ -719,7 +775,7 @@ static void CG_ShowSpecCamera_f(void)
 static void CG_ServerConfig_f(void) // this should be serverside for JAPRO.  Clientside for JAPLUS etc?
 {
 	if (cgs.serverMod == SVMOD_JAPRO) {
-		trap->SendClientCommand( "serverconfig" );
+		trap->SendClientCommand("serverconfig");
 	}
 	else {
 		//(sv_fps.integer > 0) ? CG_Printf("^5sv_fps^3: ^7%i\n", sv_fps.integer) : CG_Printf("^5sv_fps^3: ^7?\n");
@@ -766,23 +822,23 @@ static void CG_ModVersion_f(void)
 	trap->Print("^5Your client version of the mod was compiled on %s at %s\n", __DATE__, __TIME__);//ass
 	trap->SendConsoleCommand("ui_modversion\n");
 	if (cgs.serverMod == SVMOD_JAPRO) {
-		trap->SendClientCommand( "modversion" );
+		trap->SendClientCommand("modversion");
 		trap->Cvar_Set("cjp_client", "1.4JAPRO"); //Do this manually here i guess, just incase it does not do it when game is created due to ja+ or something
 	}
 }
 
 static void CG_FollowBlueFlag_f(void) {
 	int i;
-	clientInfo_t	*ci;
+	clientInfo_t* ci;
 
 	if (!cg.snap)
 		return;
 
-	for (i = 0 ; i < cgs.maxclients ; i++) {
+	for (i = 0; i < cgs.maxclients; i++) {
 		if (i == cg.snap->ps.clientNum)
-				continue;
+			continue;
 
-		ci = &cgs.clientinfo[ i ];
+		ci = &cgs.clientinfo[i];
 
 		if (ci->powerups & (1 << PW_BLUEFLAG)) {
 			trap->SendClientCommand(va("follow %i", i));
@@ -793,16 +849,16 @@ static void CG_FollowBlueFlag_f(void) {
 
 static void CG_FollowRedFlag_f(void) {
 	int i;
-	clientInfo_t	*ci;
+	clientInfo_t* ci;
 
 	if (!cg.snap)
 		return;
 
-	for (i = 0 ; i < cgs.maxclients ; i++) {
+	for (i = 0; i < cgs.maxclients; i++) {
 		if (i == cg.snap->ps.clientNum)
 			continue;
 
-		ci = &cgs.clientinfo[ i ];
+		ci = &cgs.clientinfo[i];
 
 		if (ci->powerups & (1 << PW_REDFLAG)) {
 			trap->SendClientCommand(va("follow %i", i));
@@ -813,12 +869,12 @@ static void CG_FollowRedFlag_f(void) {
 
 static void CG_FollowFastest_f(void) {
 	int i, fastestPlayer = -1, currentSpeed, fastestSpeed = 0;
-	centity_t *cent;
+	centity_t* cent;
 
 	if (!cg.snap)
 		return;
 
-	for (i=0;i<MAX_CLIENTS;i++) {
+	for (i = 0; i < MAX_CLIENTS; i++) {
 		if (i == cg.snap->ps.clientNum)
 			continue;
 
@@ -849,12 +905,12 @@ static void CG_Follow_f(void) {
 		return;
 	}
 
-		clientNum = CG_ClientNumberFromString(CG_Argv(1));
+	clientNum = CG_ClientNumberFromString(CG_Argv(1));
 
-		if (clientNum < 0)
-			return;
+	if (clientNum < 0)
+		return;
 
-		trap->SendClientCommand(va("follow %i", clientNum));
+	trap->SendClientCommand(va("follow %i", clientNum));
 }
 
 static void CG_RemapShader_f(void) {
@@ -865,8 +921,8 @@ static void CG_RemapShader_f(void) {
 		return;
 	}
 
-	trap->Cmd_Argv( 1, oldShader, sizeof( oldShader ) );
-	trap->Cmd_Argv( 2, newShader, sizeof( newShader ) );
+	trap->Cmd_Argv(1, oldShader, sizeof(oldShader));
+	trap->Cmd_Argv(2, newShader, sizeof(newShader));
 
 	//validate this shit ?
 	//how to stop from using trans shaders..?
@@ -876,13 +932,13 @@ static void CG_RemapShader_f(void) {
 }
 
 static void CG_ListRemaps_f(void) {
-	const char	*info;
+	const char* info;
 	char info2[MAX_CONFIGSTRINGS];
-	info = CG_ConfigString( CS_SHADERSTATE );
+	info = CG_ConfigString(CS_SHADERSTATE);
 
-	Q_strncpyz( info2, info, sizeof(info2));
+	Q_strncpyz(info2, info, sizeof(info2));
 
-	Q_strstrip( info2, ":", "\n" );
+	Q_strstrip(info2, ":", "\n");
 
 	Com_Printf("Remaps: \n %s \n", info2);
 
@@ -908,14 +964,14 @@ static void CG_ListEmojis_f(void) {
 }
 
 #if 1
-void CG_StrafeTrailLine( vec3_t start, vec3_t end, int time, int clientNum, int number);
+void CG_StrafeTrailLine(vec3_t start, vec3_t end, int time, int clientNum, int number);
 void CG_SpawnStrafeTrailFromCFG_f(void) //loda fixme
 {
 	fileHandle_t f;
 	int		fLen = 0, MAX_NUM_ITEMS = 100000, args = 1, row = 0, clientNum = 28;  //use max num warps idk
-	char	input[MAX_QPATH], fileName[MAX_QPATH], buf[512*1024] = {0};//eh
-	char*	pch;
-	vec3_t spot = {0}, lastSpot = {0}, diff;
+	char	input[MAX_QPATH], fileName[MAX_QPATH], buf[512 * 1024] = { 0 };//eh
+	char* pch;
+	vec3_t spot = { 0 }, lastSpot = { 0 }, diff;
 	//float radius;
 
 	if (trap->Cmd_Argc() != 2 && trap->Cmd_Argc() != 3) {
@@ -923,9 +979,9 @@ void CG_SpawnStrafeTrailFromCFG_f(void) //loda fixme
 		return;
 	}
 
-	trap->Cmd_Argv( 1, input, sizeof( input ) );
-	Q_strstrip( input, "\n\r;:?*<>|\"\\/ ", NULL );
-	Q_CleanStr( input );
+	trap->Cmd_Argv(1, input, sizeof(input));
+	Q_strstrip(input, "\n\r;:?*<>|\"\\/ ", NULL);
+	Q_CleanStr(input);
 	Q_strlwr(fileName);//dat linux
 	Com_sprintf(fileName, sizeof(fileName), "strafetrails/%s.cfg", input);
 	//Q_strcat(filename, sizeof(filename), ".cfg");
@@ -933,12 +989,12 @@ void CG_SpawnStrafeTrailFromCFG_f(void) //loda fixme
 	fLen = trap->FS_Open(fileName, &f, FS_READ);
 
 	if (!f) {
-		Com_Printf ("Couldn't load trail locations from %s\n", fileName);
+		Com_Printf("Couldn't load trail locations from %s\n", fileName);
 		return;
 	}
 	if (fLen >= sizeof(buf)) {
 		trap->FS_Close(f);
-		Com_Printf ("Couldn't load trail locations from %s, file is too large\n", fileName);
+		Com_Printf("Couldn't load trail locations from %s, file is too large\n", fileName);
 		return;
 	}
 
@@ -946,14 +1002,14 @@ void CG_SpawnStrafeTrailFromCFG_f(void) //loda fixme
 	buf[fLen] = 0;
 	trap->FS_Close(f);
 
-	trap->Cmd_Argv( 2, input, sizeof( input ) );
+	trap->Cmd_Argv(2, input, sizeof(input));
 	clientNum = atoi(input);
 	if (clientNum < 0)
 		clientNum = 0;
 	else if (clientNum > 28) //idk
 		clientNum = 28;
 
-	pch = strtok (buf," \n\t");  //loda fixme why is this broken
+	pch = strtok(buf, " \n\t");  //loda fixme why is this broken
 	while (pch != NULL && row < MAX_NUM_ITEMS)
 	{
 		if ((args % 3) == 1)
@@ -963,18 +1019,18 @@ void CG_SpawnStrafeTrailFromCFG_f(void) //loda fixme
 		else if ((args % 3) == 0) {
 			spot[2] = atoi(pch);
 			VectorSubtract(spot, lastSpot, diff);
-			if (VectorLengthSquared(diff) < 512*512) {
-				CG_StrafeTrailLine( spot, lastSpot, 12*60*60*1000, clientNum, row + 1); //clientnum 28 cuz why not
+			if (VectorLengthSquared(diff) < 512 * 512) {
+				CG_StrafeTrailLine(spot, lastSpot, 12 * 60 * 60 * 1000, clientNum, row + 1); //clientnum 28 cuz why not
 			}
 			//trap->Print("Warp added: %s, <%i, %i, %i, %i>\n", warpList[row].name, warpList[row].x, warpList[row].y, warpList[row].z, warpList[row].yaw);
 			VectorCopy(spot, lastSpot);
 			row++;
 		}
-    	pch = strtok (NULL, " \n\t");
+		pch = strtok(NULL, " \n\t");
 		args++;
 	}
 
-	Com_Printf ("Loaded strafe trail from %s\n", fileName);
+	Com_Printf("Loaded strafe trail from %s\n", fileName);
 }
 #endif
 
@@ -1006,11 +1062,11 @@ void CG_Do_f(void) //loda fixme
 	if (cgs.restricts & RESTRICT_DO) {
 		return;
 	}
-	else if (cgs.serverMod == SVMOD_JAPRO && cg.clientNum == cg.predictedPlayerState.clientNum  && cg.predictedPlayerState.stats[STAT_RACEMODE]) {
-			return;
+	else if (cgs.serverMod == SVMOD_JAPRO && cg.clientNum == cg.predictedPlayerState.clientNum && cg.predictedPlayerState.stats[STAT_RACEMODE]) {
+		return;
 	}
 
-	trap->Cmd_Argv( 1, vstr, sizeof( vstr ) );
+	trap->Cmd_Argv(1, vstr, sizeof(vstr));
 
 	if (trap->Cmd_Argc() == 3)
 		delay = atoi(CG_Argv(2));
@@ -1019,8 +1075,8 @@ void CG_Do_f(void) //loda fixme
 
 	if (delay < 0)
 		delay = 0;
-	else if (delay > 1000*60*60)
-		delay = 1000*60*60;
+	else if (delay > 1000 * 60 * 60)
+		delay = 1000 * 60 * 60;
 
 	int index = 0;
 	while (index < MAX_DO_BUFFERS)
@@ -1050,10 +1106,10 @@ static void CG_DoCancel_f(void) {
 
 static void CG_Saber_f(void) // this should be serverside for JAPRO.  Clientside for JAPLUS etc?
 {
-	char saber1[MAX_QPATH] = {0}, saber2[MAX_QPATH] = {0};
+	char saber1[MAX_QPATH] = { 0 }, saber2[MAX_QPATH] = { 0 };
 	int argc = trap->Cmd_Argc();
 	if (argc == 2) {
-		trap->Cmd_Argv( 1, saber1, sizeof( saber1 ) );
+		trap->Cmd_Argv(1, saber1, sizeof(saber1));
 		if (cgs.serverMod >= SVMOD_JAPLUS)
 			trap->SendClientCommand(va("saber %s", saber1));
 		trap->Cvar_Set("saber1", va("%s", saber1));
@@ -1062,8 +1118,8 @@ static void CG_Saber_f(void) // this should be serverside for JAPRO.  Clientside
 	}
 
 	if (argc == 3) {
-		trap->Cmd_Argv( 1, saber1, sizeof( saber1 ) );
-		trap->Cmd_Argv( 2, saber2, sizeof( saber2 ) );
+		trap->Cmd_Argv(1, saber1, sizeof(saber1));
+		trap->Cmd_Argv(2, saber2, sizeof(saber2));
 		if (cgs.serverMod >= SVMOD_JAPLUS)
 			trap->SendClientCommand(va("saber %s %s", saber1, saber2));
 		trap->Cvar_Set("saber1", va("%s", saber1));
@@ -1092,42 +1148,42 @@ static void CG_Autologin_f(void)
 	if (cg.predictedPlayerState.pm_type == PM_INTERMISSION && cgs.serverMod == SVMOD_JAPLUS)
 		return;
 
-	Q_strncpyz( currentAddress, cl_currentServerAddress.string, sizeof(currentAddress));
+	Q_strncpyz(currentAddress, cl_currentServerAddress.string, sizeof(currentAddress));
 
-	if ( strchr(currentAddress, ':') == NULL) {
+	if (strchr(currentAddress, ':') == NULL) {
 		Q_strcat(currentAddress, sizeof(currentAddress), ":29070");
 	}
 
 	//Check is loginserver string has semicolon. if not, append :29070
 	//Check is curent string has semicolon, if not, append :29070
 
-	Q_strncpyz( autoLoginString, cg_autoLoginServer1.string, sizeof(autoLoginString));
-	if ( strchr(autoLoginString, ':') == NULL) {
+	Q_strncpyz(autoLoginString, cg_autoLoginServer1.string, sizeof(autoLoginString));
+	if (strchr(autoLoginString, ':') == NULL) {
 		Q_strcat(autoLoginString, sizeof(autoLoginString), ":29070");
 	}
 	//Com_Printf("Checking match1, current %s, auto %s\n", currentAddress, autoLoginString);
 	if (!Q_stricmp(currentAddress, autoLoginString)) {
-		trap->SendClientCommand(va( "amLogin %s", cg_autoLoginPass1.string));
+		trap->SendClientCommand(va("amLogin %s", cg_autoLoginPass1.string));
 		return;
 	}
 
-	Q_strncpyz( autoLoginString, cg_autoLoginServer2.string, sizeof(autoLoginString));
-	if ( strchr(autoLoginString, ':') == NULL) {
+	Q_strncpyz(autoLoginString, cg_autoLoginServer2.string, sizeof(autoLoginString));
+	if (strchr(autoLoginString, ':') == NULL) {
 		Q_strcat(autoLoginString, sizeof(autoLoginString), ":29070");
 	}
 	//Com_Printf("Checking match2, current %s, auto %s\n", currentAddress, autoLoginString);
 	if (!Q_stricmp(currentAddress, autoLoginString)) {
-		trap->SendClientCommand(va( "amLogin %s", cg_autoLoginPass2.string));
+		trap->SendClientCommand(va("amLogin %s", cg_autoLoginPass2.string));
 		return;
 	}
 
-	Q_strncpyz( autoLoginString, cg_autoLoginServer3.string, sizeof(autoLoginString));
-	if ( strchr(autoLoginString, ':') == NULL) {
+	Q_strncpyz(autoLoginString, cg_autoLoginServer3.string, sizeof(autoLoginString));
+	if (strchr(autoLoginString, ':') == NULL) {
 		Q_strcat(autoLoginString, sizeof(autoLoginString), ":29070");
 	}
 	//Com_Printf("Checking match3, current %s, auto %s\n", currentAddress, autoLoginString);
 	if (!Q_stricmp(currentAddress, autoLoginString)) {
-		trap->SendClientCommand(va( "amLogin %s", cg_autoLoginPass3.string));
+		trap->SendClientCommand(va("amLogin %s", cg_autoLoginPass3.string));
 		return;
 	}
 
@@ -1233,9 +1289,9 @@ static void CG_Amcolor_f(void)
 		return;
 	}
 
-	trap->Cmd_Argv( 1, red, sizeof( red ) );
-	trap->Cmd_Argv( 2, green, sizeof( green ) );
-	trap->Cmd_Argv( 3, blue, sizeof( blue ) );
+	trap->Cmd_Argv(1, red, sizeof(red));
+	trap->Cmd_Argv(2, green, sizeof(green));
+	trap->Cmd_Argv(3, blue, sizeof(blue));
 
 	trap->Cvar_Set("char_color_red", red);
 	trap->Cvar_Set("char_color_green", green);
@@ -1243,16 +1299,16 @@ static void CG_Amcolor_f(void)
 }
 //JAPRO - Clientside - Amcolor - End
 
-static void CG_ZoomDown_f( void ) {
-	if ( cg.zoomed ) {
+static void CG_ZoomDown_f(void) {
+	if (cg.zoomed) {
 		return;
 	}
 	cg.zoomed = qtrue;
 	cg.zoomTime = cg.time;
 }
 
-static void CG_ZoomUp_f( void ) {
-	if ( !cg.zoomed ) {
+static void CG_ZoomUp_f(void) {
+	if (!cg.zoomed) {
 		return;
 	}
 	cg.zoomed = qfalse;
@@ -1398,7 +1454,7 @@ void CG_LastWeapon_f(void) //loda fixme. japro
 }
 
 typedef struct bitInfo_S {
-	const char	*string;
+	const char* string;
 } bitInfo_T;
 
 static bitInfo_T strafeTweaks[] = {
@@ -1418,18 +1474,18 @@ static bitInfo_T strafeTweaks[] = {
 	{"Weze style"},//13
 	{"Line Crosshair"}//13
 };
-static const int MAX_STRAFEHELPER_TWEAKS = ARRAY_LEN( strafeTweaks );
+static const int MAX_STRAFEHELPER_TWEAKS = ARRAY_LEN(strafeTweaks);
 
 extern void CG_ClearThirdPersonDamp(void);
-void CG_StrafeHelper_f( void ) {
-	if ( trap->Cmd_Argc() == 1 ) {
+void CG_StrafeHelper_f(void) {
+	if (trap->Cmd_Argc() == 1) {
 		int i = 0;
-		for ( i = 0; i < MAX_STRAFEHELPER_TWEAKS; i++ ) {
-			if ( (cg_strafeHelper.integer & (1 << i)) ) {
-				Com_Printf( "%2d [X] %s\n", i, strafeTweaks[i].string );
+		for (i = 0; i < MAX_STRAFEHELPER_TWEAKS; i++) {
+			if ((cg_strafeHelper.integer & (1 << i))) {
+				Com_Printf("%2d [X] %s\n", i, strafeTweaks[i].string);
 			}
 			else {
-				Com_Printf( "%2d [ ] %s\n", i, strafeTweaks[i].string );
+				Com_Printf("%2d [ ] %s\n", i, strafeTweaks[i].string);
 			}
 		}
 		return;
@@ -1439,11 +1495,11 @@ void CG_StrafeHelper_f( void ) {
 		int index;
 		const uint32_t mask = (1 << MAX_STRAFEHELPER_TWEAKS) - 1;
 
-		trap->Cmd_Argv( 1, arg, sizeof(arg) );
-		index = atoi( arg );
+		trap->Cmd_Argv(1, arg, sizeof(arg));
+		index = atoi(arg);
 
-		if ( index < 0 || index >= MAX_STRAFEHELPER_TWEAKS ) {
-			Com_Printf( "strafeHelper: Invalid range: %i [0, %i]\n", index, MAX_STRAFEHELPER_TWEAKS - 1 );
+		if (index < 0 || index >= MAX_STRAFEHELPER_TWEAKS) {
+			Com_Printf("strafeHelper: Invalid range: %i [0, %i]\n", index, MAX_STRAFEHELPER_TWEAKS - 1);
 			return;
 		}
 
@@ -1461,10 +1517,10 @@ void CG_StrafeHelper_f( void ) {
 		else {
 			trap->Cvar_Set("cg_strafeHelper", va("%i", (1 << index) ^ (cg_strafeHelper.integer & mask)));
 		}
-		trap->Cvar_Update( &cg_strafeHelper );
+		trap->Cvar_Update(&cg_strafeHelper);
 
-		Com_Printf( "%s %s^7\n", strafeTweaks[index].string, ((cg_strafeHelper.integer & (1 << index))
-			? "^2Enabled" : "^1Disabled") );
+		Com_Printf("%s %s^7\n", strafeTweaks[index].string, ((cg_strafeHelper.integer & (1 << index))
+			? "^2Enabled" : "^1Disabled"));
 	}
 
 	CG_ClearThirdPersonDamp();
@@ -1574,7 +1630,7 @@ static bitInfo_T pluginDisables[] = { // MAX_WEAPON_TWEAKS tweaks (24)
 	{"Show checkpoints in console only"},//28
 	{"Disable holstered sabers"}//29
 };
-static const int MAX_PLUGINDISABLES = ARRAY_LEN( pluginDisables );
+static const int MAX_PLUGINDISABLES = ARRAY_LEN(pluginDisables);
 
 static qboolean CG_PluginOptionEnabled(int index)
 {
@@ -1592,21 +1648,23 @@ void CG_PluginDisable_f( void ) {
 		return;
 	}
 
-	if ( trap->Cmd_Argc() == 1 ) {
+	if (trap->Cmd_Argc() == 1) {
 		int i = 0, display = 0;
 
-		for ( i = 0; i < MAX_PLUGINDISABLES; i++ ) {
+		for (i = 0; i < MAX_PLUGINDISABLES; i++) {
 
 			if (cgs.serverMod == SVMOD_JAPLUS && !japlusPluginDisables[i])
 				continue;
 			if (cgs.serverMod == SVMOD_JAPRO && !japroPluginDisables[i])
 				continue;
 
+
 			if ( CG_PluginOptionEnabled(i) ) {
 				Com_Printf( "%2d [X] %s\n", display, pluginDisables[i].string );
+
 			}
 			else {
-				Com_Printf( "%2d [ ] %s\n", display, pluginDisables[i].string );
+				Com_Printf("%2d [ ] %s\n", display, pluginDisables[i].string);
 			}
 			display++;
 		}
@@ -1617,11 +1675,11 @@ void CG_PluginDisable_f( void ) {
 		int index, index2, i, n = 0;
 		const uint32_t mask = (1 << MAX_PLUGINDISABLES) - 1;
 
-		trap->Cmd_Argv( 1, arg, sizeof(arg) );
-		index = atoi( arg );
+		trap->Cmd_Argv(1, arg, sizeof(arg));
+		index = atoi(arg);
 		index2 = index;
 
-		for ( i = 0; i < MAX_PLUGINDISABLES; i++ ) {
+		for (i = 0; i < MAX_PLUGINDISABLES; i++) {
 			//ok so, if they type /plugin #
 			//go through the list of plugindisables, from 0 to max,
 			//for each qtrue, increment I
@@ -1637,13 +1695,13 @@ void CG_PluginDisable_f( void ) {
 			}
 		}
 
-		if ( index2 < 0 || index2 >= MAX_PLUGINDISABLES ) {
-			Com_Printf( "plugin: Invalid range: %i [0, %i]\n", index2, MAX_PLUGINDISABLES - 1 );
+		if (index2 < 0 || index2 >= MAX_PLUGINDISABLES) {
+			Com_Printf("plugin: Invalid range: %i [0, %i]\n", index2, MAX_PLUGINDISABLES - 1);
 			return;
 		}
 
-		trap->Cvar_Set( "cp_pluginDisable", va( "%i", (1 << index2) ^ (cp_pluginDisable.integer & mask ) ) );
-		trap->Cvar_Update( &cp_pluginDisable );
+		trap->Cvar_Set("cp_pluginDisable", va("%i", (1 << index2) ^ (cp_pluginDisable.integer & mask)));
+		trap->Cvar_Update(&cp_pluginDisable);
 
 		Com_Printf( "%s %s^7\n", pluginDisables[index2].string, (CG_PluginOptionEnabled(i)
 			? "^2Enabled" : "^1Disabled") );
@@ -1847,7 +1905,7 @@ void CG_SpeedometerSettings_f(void)
 		}
 
 		if (index == 8 || index == 9) { //Radio button these options
-		//Toggle index, and make sure everything else in this group (8,9) is turned off
+			//Toggle index, and make sure everything else in this group (8,9) is turned off
 			int groupMask = (1 << 8) + (1 << 9);
 			int value = cg_speedometer.integer;
 
@@ -1878,7 +1936,7 @@ static bitInfo_T cosmetics[] = {
 };
 static const int MAX_COSMETICS = ARRAY_LEN(cosmetics);
 
-void IntegerToRaceName(int style, char *styleString, size_t styleStringSize);
+void IntegerToRaceName(int style, char* styleString, size_t styleStringSize);
 static void CG_Cosmetics_f(void)
 {
 	if (cgs.serverMod < SVMOD_JAPRO)
@@ -1889,7 +1947,7 @@ static void CG_Cosmetics_f(void)
 
 	if (trap->Cmd_Argc() == 1) {
 		int i = 0, j = 0, display = 0;
-		char styleString[16] = {0};
+		char styleString[16] = { 0 };
 		qboolean found;
 
 		for (i = 0; i < MAX_COSMETICS; i++) {
@@ -1900,9 +1958,9 @@ static void CG_Cosmetics_f(void)
 						if (display == cosmeticUnlocks[j].bitvalue) {
 							IntegerToRaceName(cosmeticUnlocks[j].style, styleString, sizeof(styleString));
 							if (cosmeticUnlocks[j].duration)
-								Com_Printf("%2d [X] %s ^3(requires %s %s in under %.3f seconds)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString, ((float)cosmeticUnlocks[j].duration)*0.001f );
+								Com_Printf("%2d [X] %s ^3(requires %s %s in under %.3f seconds)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString, ((float)cosmeticUnlocks[j].duration) * 0.001f);
 							else
-								Com_Printf("%2d [X] %s ^3(requires %s %s)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString );
+								Com_Printf("%2d [X] %s ^3(requires %s %s)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString);
 							found = qtrue;
 							break;
 						}
@@ -1927,9 +1985,9 @@ static void CG_Cosmetics_f(void)
 						if (display == cosmeticUnlocks[j].bitvalue) {
 							IntegerToRaceName(cosmeticUnlocks[j].style, styleString, sizeof(styleString));
 							if (cosmeticUnlocks[j].duration)
-								Com_Printf("%2d [ ] %s ^3(requires %s %s in under %.3f seconds)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString, ((float)cosmeticUnlocks[j].duration)*0.001f );
+								Com_Printf("%2d [ ] %s ^3(requires %s %s in under %.3f seconds)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString, ((float)cosmeticUnlocks[j].duration) * 0.001f);
 							else
-								Com_Printf("%2d [ ] %s ^3(requires %s %s)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString );
+								Com_Printf("%2d [ ] %s ^3(requires %s %s)\n", display, cosmetics[i].string, cosmeticUnlocks[j].mapname, styleString);
 							found = qtrue;
 							break;
 						}
@@ -2030,8 +2088,8 @@ static void CG_AmRun_f(void)
 	if (cgs.serverMod != SVMOD_JAPRO)
 		return;
 
-	trap->Cvar_Set( "cp_pluginDisable", va( "%i", (JAPRO_PLUGIN_JAWARUN) ^ (cp_pluginDisable.integer & mask ) ) );
-	trap->Cvar_Update( &cp_pluginDisable ); //needed ?
+	trap->Cvar_Set("cp_pluginDisable", va("%i", (JAPRO_PLUGIN_JAWARUN) ^ (cp_pluginDisable.integer & mask)));
+	trap->Cvar_Update(&cp_pluginDisable); //needed ?
 }
 
 /*
@@ -2055,7 +2113,7 @@ static void CG_AddSpeedpoint_f(void)
 	trap->Cmd_Argv(1, input, sizeof(input));
 	speed = atoi(input);
 
-	for (i = 0; i<MAX_CLIENT_SPEEDPOINTS; i++) { //Add a speedpoint to the first available slot
+	for (i = 0; i < MAX_CLIENT_SPEEDPOINTS; i++) { //Add a speedpoint to the first available slot
 		if (!cg.clientSpeedpoints[i].isSet)
 			break;
 	}
@@ -2069,7 +2127,7 @@ static void CG_AddSpeedpoint_f(void)
 		speed = -speed;
 
 	//Check for duplicate?
-	for (j = 0; j<MAX_CLIENT_SPEEDPOINTS; j++) {
+	for (j = 0; j < MAX_CLIENT_SPEEDPOINTS; j++) {
 		if (cg.clientSpeedpoints[j].isSet && cg.clientSpeedpoints[j].isSet == speed) {
 			Com_Printf("Duplicate speedsound!\n");
 			return;
@@ -2096,7 +2154,7 @@ static void CG_DeleteSpeedpoint_f(void) //This should reorder them so no empty c
 	i = atoi(arg);
 
 	if (i == -1) {
-		for (i = 0; i<MAX_CLIENT_SPEEDPOINTS; i++) {
+		for (i = 0; i < MAX_CLIENT_SPEEDPOINTS; i++) {
 			cg.clientSpeedpoints[i].speed = 0;
 			cg.clientSpeedpoints[i].isSet = qfalse;
 		}
@@ -2129,7 +2187,7 @@ static void CG_ListSpeedpoints_f(void)
 		return;
 	}
 
-	for (i = 0; i<MAX_CLIENT_SPEEDPOINTS; i++) { //Add a checkpoint to the first available slot
+	for (i = 0; i < MAX_CLIENT_SPEEDPOINTS; i++) { //Add a checkpoint to the first available slot
 		if (cg.clientSpeedpoints[i].isSet)
 			Com_Printf("^5%i^3: ^3%i\n", i, cg.clientSpeedpoints[i].speed);
 	}
@@ -2148,12 +2206,12 @@ static void CG_AddCheckpoint_f(void)
 		return;
 	}
 
-	trap->Cmd_Argv( 1, x1s, sizeof(x1s) );
-	trap->Cmd_Argv( 2, y1s, sizeof(y1s) );
-	trap->Cmd_Argv( 3, z1s, sizeof(z1s) );
-	trap->Cmd_Argv( 4, x2s, sizeof(x2s) );
-	trap->Cmd_Argv( 5, y2s, sizeof(y2s) );
-	trap->Cmd_Argv( 6, z2s, sizeof(z2s) );
+	trap->Cmd_Argv(1, x1s, sizeof(x1s));
+	trap->Cmd_Argv(2, y1s, sizeof(y1s));
+	trap->Cmd_Argv(3, z1s, sizeof(z1s));
+	trap->Cmd_Argv(4, x2s, sizeof(x2s));
+	trap->Cmd_Argv(5, y2s, sizeof(y2s));
+	trap->Cmd_Argv(6, z2s, sizeof(z2s));
 
 	x1 = atoi(x1s);
 	y1 = atoi(y1s);
@@ -2162,7 +2220,7 @@ static void CG_AddCheckpoint_f(void)
 	y2 = atoi(y2s);
 	z2 = atoi(z2s);
 
-	for (i=0; i<MAX_CLIENT_CHECKPOINTS; i++) { //Add a checkpoint to the first available slot
+	for (i = 0; i < MAX_CLIENT_CHECKPOINTS; i++) { //Add a checkpoint to the first available slot
 		if (!cg.clientCheckpoints[i].isSet)
 			break;
 	}
@@ -2208,14 +2266,14 @@ static void CG_AddCheckpoint_f(void)
 
 	Com_Printf("Checkpoint added.\n");
 
-	for (i=0; i<3; i++) {
+	for (i = 0; i < 3; i++) {
 		if (mins[i] == maxs[i])
 			Com_Printf("Error: Checkpoint bounding box has no volume!\n");
 	}
 
 	//Com_Printf("Drawing cube %.1f %.1f %.1f, %.1f %.1f %.1f\n", mins[0], mins[1], mins[2], maxs[0], maxs[1], maxs[2]);
 
-	CG_CubeOutline( mins, maxs, 8000, COLOR_RED, 0.25 );
+	CG_CubeOutline(mins, maxs, 8000, COLOR_RED, 0.25);
 }
 
 static void CG_DeleteCheckpoint_f(void) //This should reorder them so no empty checkpoints in the middle of set checkpoints?
@@ -2228,7 +2286,7 @@ static void CG_DeleteCheckpoint_f(void) //This should reorder them so no empty c
 		return;
 	}
 
-	trap->Cmd_Argv( 1, arg, sizeof(arg) );
+	trap->Cmd_Argv(1, arg, sizeof(arg));
 	i = atoi(arg);
 
 	if (i < 0 || i >= MAX_CLIENT_CHECKPOINTS) {
@@ -2258,7 +2316,7 @@ static void CG_ListCheckpoints_f(void)
 
 	Com_Printf("^5#  Bounding Box\n");
 
-	for (i=0; i<MAX_CLIENT_CHECKPOINTS; i++) { //Add a checkpoint to the first available slot
+	for (i = 0; i < MAX_CLIENT_CHECKPOINTS; i++) { //Add a checkpoint to the first available slot
 		if (cg.clientCheckpoints[i].isSet)
 			Com_Printf("^5%i^3: ^3(^7%i %i %i^3, ^7%i %i %i^3)\n",
 				i, cg.clientCheckpoints[i].x1, cg.clientCheckpoints[i].y1, cg.clientCheckpoints[i].z1, cg.clientCheckpoints[i].x2, cg.clientCheckpoints[i].y2, cg.clientCheckpoints[i].z2);
@@ -2276,7 +2334,7 @@ static void CG_TeleToCheckpoint_f(void)
 		return;
 	}
 
-	trap->Cmd_Argv( 1, arg, sizeof(arg) );
+	trap->Cmd_Argv(1, arg, sizeof(arg));
 	i = atoi(arg);
 
 	if (i < 0 || i >= MAX_CLIENT_CHECKPOINTS) {
@@ -2316,7 +2374,7 @@ static void CG_DeleteStrafeTrail_f(void)
 		return;
 	}
 
-	trap->Cmd_Argv( 1, arg, sizeof(arg) );
+	trap->Cmd_Argv(1, arg, sizeof(arg));
 	clientNum = atoi(arg);
 
 	//get clientnum arg
@@ -2332,15 +2390,15 @@ static void CG_AddStrafeTrail_f(void)
 {
 	int clientNum;
 	char arg[8];
-	const uint32_t mask = (1 << (MAX_CLIENTS-2)) - 1; //okay?
+	const uint32_t mask = (1 << (MAX_CLIENTS - 2)) - 1; //okay?
 
 	if (trap->Cmd_Argc() == 1) {
 		int i;
-		clientInfo_t *cl;
+		clientInfo_t* cl;
 
 		for (i = 0, cl = cgs.clientinfo; i < cgs.maxclients; ++i, ++cl) {
 			if (cl->infoValid) {
-				if (cg_strafeTrailPlayers.integer & (1<<i))
+				if (cg_strafeTrailPlayers.integer & (1 << i))
 					trap->Print("^5%2d^3: ^7[X] ^7%s\n", i, cl->name);
 				else
 					trap->Print("^5%2d^3: ^7[ ] ^7%s\n", i, cl->name);
@@ -2348,22 +2406,22 @@ static void CG_AddStrafeTrail_f(void)
 		}
 	}
 	else if (trap->Cmd_Argc() == 2) {
-		trap->Cmd_Argv( 1, arg, sizeof(arg) );
+		trap->Cmd_Argv(1, arg, sizeof(arg));
 		clientNum = atoi(arg);
 
 		if (clientNum == -1) {
 			if (cg_strafeTrailPlayers.integer) {
-				trap->Cvar_Set( "cg_strafeTrailPlayers", "0" );
+				trap->Cvar_Set("cg_strafeTrailPlayers", "0");
 				Com_Printf("All strafetrails stopped\n");
 			}
 			else {
-				trap->Cvar_Set( "cg_strafeTrailPlayers", "1073741823" );
+				trap->Cvar_Set("cg_strafeTrailPlayers", "1073741823");
 				Com_Printf("All strafetrails added\n");
 			}
 		}
 		else {
-			trap->Cvar_Set( "cg_strafeTrailPlayers", va( "%i", (1 << clientNum) ^ (cg_strafeTrailPlayers.integer & mask ) ) );
-			if (cg_strafeTrailPlayers.integer & (1<<clientNum))
+			trap->Cvar_Set("cg_strafeTrailPlayers", va("%i", (1 << clientNum) ^ (cg_strafeTrailPlayers.integer & mask)));
+			if (cg_strafeTrailPlayers.integer & (1 << clientNum))
 				Com_Printf("Strafetrail stopped\n");
 			else
 				Com_Printf("Strafetrail added\n");
@@ -2373,6 +2431,7 @@ static void CG_AddStrafeTrail_f(void)
 		Com_Printf("Usage: /strafeTrail <client #>\n");
 
 }
+
 
 // telegun
 extern vec3_t cg_crosshairPos;
@@ -2405,54 +2464,6 @@ static void CG_TeleCrosshair_f(void) {
 		trap->SendClientCommand(va("amTele %f %f %f %f",
 			newPos[0], newPos[1], newPos[2], cg.predictedPlayerState.viewangles[YAW] + yawoffset));
 	}
-}
-
-// get
-static void CG_TeleTargetPlayer_f(void) {
-	vec3_t viewAngles;
-	vec3_t forward;
-	vec3_t newPos;
-	int targetNum = -1;
-	float offset = 100.0f;
-	float yawoffset = 0.0f;
-
-	if (!cg.snap) {
-		return;
-	}
-
-	if (trap->Cmd_Argc() == 1 || (trap->Cmd_Argc() > 1 && Q_stricmp(CG_Argv(1), "gun") == 0)) {
-		targetNum = CG_CrosshairPlayer();
-	}
-	else {
-		targetNum = CG_ClientNumberFromString(CG_Argv(1));
-	}
-	if (trap->Cmd_Argc() > 2) {
-		offset = atof(CG_Argv(2));
-
-		if (trap->Cmd_Argc() > 3) {
-			yawoffset = atof(CG_Argv(3));
-		}
-	}
-	
-
-	if (targetNum < 0 || targetNum >= MAX_CLIENTS) {
-		return;
-	}
-
-	VectorCopy(cg.predictedPlayerState.viewangles, viewAngles);
-	if (trap->Cmd_Argc() <= 2) {
-		viewAngles[PITCH] = 0;
-		viewAngles[ROLL] = 0;
-	}
-	AngleVectors(viewAngles, forward, NULL, NULL);
-	VectorMA(cg.predictedPlayerState.origin, offset, forward, newPos);
-
-	if (trap->Cmd_Argc() <= 2) {
-		newPos[2] = cg.predictedPlayerState.origin[2] + 24; // so that players dont get caught in slight ledges - similar to JA+ default teleport behaviour
-	}
-
-	trap->SendClientCommand(va("amTele %i %f %f %f %f",
-		targetNum, newPos[0], newPos[1], newPos[2], cg.predictedPlayerState.viewangles[YAW] + 180 + yawoffset));
 }
 
 // goto
@@ -2516,11 +2527,13 @@ static void CG_TeleToPlayer_f(void) {
 		newPos[0], newPos[1], newPos[2], cent->lerpAngles[YAW] + 180 + yawoffset));
 }
 
+
 extern int lastWhispererId;
-void CG_Say_f( void ) {
-	char msg[MAX_SAY_TEXT] = {0};
-	char word[MAX_SAY_TEXT] = {0};
-	char numberStr[MAX_SAY_TEXT] = {0};
+void CG_Say_f(void) {
+	char msg[MAX_SAY_TEXT] = { 0 };
+	char word[MAX_SAY_TEXT] = { 0 };
+	char numberStr[MAX_SAY_TEXT] = { 0 };
+
 	int i, number = 0, numWords = trap->Cmd_Argc();
 	int lastWhispererNum = -1;
 	int clientNum = -1, messagetype = 0;
@@ -2586,22 +2599,22 @@ void CG_Say_f( void ) {
 		else if (!Q_stricmp(word, "%W%")) {
 			number = cg.predictedPlayerState.weapon;
 			switch (number) {
-				case 1:	Com_sprintf(numberStr, sizeof(numberStr), "Stun baton"); break;
-				case 2: Com_sprintf(numberStr, sizeof(numberStr), "Melee"); break;
-				case 4:	Com_sprintf(numberStr, sizeof(numberStr), "Pistol"); break;
-				case 5:	Com_sprintf(numberStr, sizeof(numberStr), "E11"); break;
-				case 6:	Com_sprintf(numberStr, sizeof(numberStr), "Sniper"); break;
-				case 7:	Com_sprintf(numberStr, sizeof(numberStr), "Bowcaster");	break;
-				case 8:	Com_sprintf(numberStr, sizeof(numberStr), "Repeater"); break;
-				case 9:	Com_sprintf(numberStr, sizeof(numberStr), "Demp2");	break;
-				case 10: Com_sprintf(numberStr, sizeof(numberStr), "Flechette"); break;
-				case 11: Com_sprintf(numberStr, sizeof(numberStr), "Rocket"); break;
-				case 12: Com_sprintf(numberStr, sizeof(numberStr), "Thermal"); break;
-				case 13: Com_sprintf(numberStr, sizeof(numberStr), "Tripmine"); break;
-				case 14: Com_sprintf(numberStr, sizeof(numberStr), "Detpack"); break;
-				case 15: Com_sprintf(numberStr, sizeof(numberStr), "Concussion rifle"); break;
-				case 16: Com_sprintf(numberStr, sizeof(numberStr), "Bryar"); break;
-				default: Com_sprintf(numberStr, sizeof(numberStr), "Saber"); break;
+			case 1:	Com_sprintf(numberStr, sizeof(numberStr), "Stun baton"); break;
+			case 2: Com_sprintf(numberStr, sizeof(numberStr), "Melee"); break;
+			case 4:	Com_sprintf(numberStr, sizeof(numberStr), "Pistol"); break;
+			case 5:	Com_sprintf(numberStr, sizeof(numberStr), "E11"); break;
+			case 6:	Com_sprintf(numberStr, sizeof(numberStr), "Sniper"); break;
+			case 7:	Com_sprintf(numberStr, sizeof(numberStr), "Bowcaster");	break;
+			case 8:	Com_sprintf(numberStr, sizeof(numberStr), "Repeater"); break;
+			case 9:	Com_sprintf(numberStr, sizeof(numberStr), "Demp2");	break;
+			case 10: Com_sprintf(numberStr, sizeof(numberStr), "Flechette"); break;
+			case 11: Com_sprintf(numberStr, sizeof(numberStr), "Rocket"); break;
+			case 12: Com_sprintf(numberStr, sizeof(numberStr), "Thermal"); break;
+			case 13: Com_sprintf(numberStr, sizeof(numberStr), "Tripmine"); break;
+			case 14: Com_sprintf(numberStr, sizeof(numberStr), "Detpack"); break;
+			case 15: Com_sprintf(numberStr, sizeof(numberStr), "Concussion rifle"); break;
+			case 16: Com_sprintf(numberStr, sizeof(numberStr), "Bryar"); break;
+			default: Com_sprintf(numberStr, sizeof(numberStr), "Saber"); break;
 			}
 			Q_strncpyz(word, numberStr, sizeof(word));
 		}
@@ -2616,7 +2629,7 @@ void CG_Say_f( void ) {
 			Q_strncpyz(word, numberStr, sizeof(word));
 		}
 		else if (!Q_stricmp(word, "%T%")) { //insert time in 12-hour format
-			struct tm *newtime;
+			struct tm* newtime;
 			qboolean AM = qtrue;
 			time_t rawtime;
 			time(&rawtime);
@@ -2628,7 +2641,7 @@ void CG_Say_f( void ) {
 			Q_strncpyz(word, numberStr, sizeof(word));
 		}
 		else if (!Q_stricmp(word, "%T2%")) { //insert time in 24-hour format
-			struct tm *newtime;
+			struct tm* newtime;
 			time_t rawtime;
 			time(&rawtime);
 			newtime = localtime(&rawtime);
@@ -2642,36 +2655,388 @@ void CG_Say_f( void ) {
 
 	switch (messagetype)
 	{
-		default:
-			Com_Printf("%sUnrecognized command %s\n", S_COLOR_YELLOW, CG_Argv(0));
-			break;
-		case 1:
-			trap->SendClientCommand(va("say %s", msg));
-			break;
-		case 2:
-			trap->SendClientCommand(va("say_team %s", msg));
-			break;
-		case 3:
-			if (clientNum > -1) trap->SendClientCommand(va("tell %i %s", clientNum, msg));
-			break;
-		case 4:
-			if (lastWhispererNum > -1) trap->SendClientCommand(va("tell %i %s", lastWhispererNum, msg));
-			break;
-			
-				
-			
-
+	default:
+		Com_Printf("%sUnrecognized command %s\n", S_COLOR_YELLOW, CG_Argv(0));
+		break;
+	case 1:
+		trap->SendClientCommand(va("say %s", msg));
+		break;
+	case 2:
+		trap->SendClientCommand(va("say_team %s", msg));
+		break;
+	case 3:
+		if (clientNum > -1) trap->SendClientCommand(va("tell %i %s", clientNum, msg));
+		break;
+	case 4:
+		if (lastWhispererNum > -1) trap->SendClientCommand(va("tell %i %s", lastWhispererNum, msg));
+		break;
 	}
 }
 
+void CG_TeleFrag_f(void) {
+	char argv1[MAX_STRING_CHARS];
+	int targetNum = -1;
+	centity_t* cent;
+	vec3_t targetOrigin;
+	float pingSec, speed;
+
+	trap->Cmd_Argv(1, argv1, sizeof(argv1));
+
+	if (!argv1[0]) {
+		return; // no argument given
+	}
+
+	// Case 1: crosshair
+	if (Q_stricmp(argv1, "gun") == 0) {
+		targetNum = CG_CrosshairPlayer();
+	}
+	// Case 2: numeric clientNum
+	else if (argv1[0] >= '0' && argv1[0] <= '9') {
+		targetNum = atoi(argv1);
+	}
+	// Case 3: treat as player name
+	else {
+		targetNum = CG_ClientNumberFromString(argv1);
+	}
+
+	if (targetNum < 0) {
+		return;
+	}
+
+	cent = &cg_entities[targetNum];
+
+	// Base position
+	VectorCopy(cent->lerpOrigin, targetOrigin);
+
+	// Calculate speed
+	speed = VectorLength(cent->currentState.pos.trDelta);
+
+	// Convert ping to seconds, clamp
+	pingSec = cg.snap->ping / 1000.0f;
+	if (pingSec > 0.25f) pingSec = 0.25f;
+
+	// Apply prediction if moving
+	if (speed > 1.0f) {
+		targetOrigin[0] += cent->currentState.pos.trDelta[0] * pingSec;
+		targetOrigin[1] += cent->currentState.pos.trDelta[1] * pingSec;
+		targetOrigin[2] += cent->currentState.pos.trDelta[2] * pingSec;
+	}
+
+	// Teleport
+	trap->SendClientCommand(va("amtele %f %f %f %f\n",
+		targetOrigin[0], targetOrigin[1], targetOrigin[2],
+		cent->lerpAngles[YAW]));
+}
+
 typedef struct consoleCommand_s {
-	const char	*cmd;
+	const char* cmd;
 	void		(*func)(void);
 } consoleCommand_t;
 
-int cmdcmp( const void *a, const void *b ) {
-	return Q_stricmp( (const char *)a, ((consoleCommand_t*)b)->cmd );
+static void CG_TeleTargetPlayer_f(void) {
+	vec3_t viewAngles, forward, newPos;
+	int targetNum;
+	float offset = 100.0f;
+	char arg1[MAX_STRING_CHARS];
+
+	if (trap->Cmd_Argc() > 1) {
+		trap->Cmd_Argv(1, arg1, sizeof(arg1));
+
+		if (Q_stricmp(arg1, "gun") == 0) {
+			targetNum = CG_CrosshairPlayer();
+		}
+		else {
+			targetNum = CG_ClientNumberFromString(arg1);
+		}
+
+		if (trap->Cmd_Argc() > 2) {
+			offset = atof(CG_Argv(2));
+		}
+	}
+	else {
+		targetNum = CG_CrosshairPlayer();
+	}
+
+	if (targetNum == -1) {
+		return;
+	}
+
+	VectorCopy(cg.predictedPlayerState.viewangles, viewAngles);
+	AngleVectors(viewAngles, forward, NULL, NULL);
+	VectorMA(cg.predictedPlayerState.origin, offset, forward, newPos);
+
+	if (trap->Cmd_Argc() <= 2) {
+		newPos[2] = cg.predictedPlayerState.origin[2] + 24;
+	}
+
+	trap->SendClientCommand(va("amTele %i %f %f %f %f",
+		targetNum, newPos[0], newPos[1], newPos[2], cg.predictedPlayerState.viewangles[YAW] + 180));
 }
+
+int cmdcmp(const void* a, const void* b) {
+	return Q_stricmp((const char*)a, ((consoleCommand_t*)b)->cmd);
+}
+
+static void CG_TeleCrosshairToMe_f(void) {
+	int clientNum;
+	vec3_t newPos;
+	float heightOffset = 70.0f; // Height above player (adjust if needed)
+
+	// Get the player under the crosshair
+	clientNum = CG_CrosshairPlayer();
+	if (clientNum == -1) {
+		return;
+	}
+
+	// Start with your current position
+	VectorCopy(cg.predictedPlayerState.origin, newPos);
+
+	// Teleport directly above you
+	newPos[2] += heightOffset;
+
+	// Send the teleport command
+	trap->SendClientCommand(
+		va("amTele %d %.2f %.2f %.2f r",
+			clientNum,
+			newPos[0],
+			newPos[1],
+			newPos[2])
+	);
+}
+
+void CG_PTele_Offset_f(void)
+{
+	centity_t* cent;
+	int x, y, z, yaw, offsetX, offsetY, offsetZ, teleOffsetX, teleOffsetY, teleOffsetZ, targetNum, controlX, controlY, controlZ;
+	vec3_t targetOrigin, control;
+	char offsetXStr[32], offsetYStr[32], offsetZStr[32], argv5[32];
+	float barrier;
+
+	barrier = 50; //Prevent telecrush - barrier
+	offsetX = 0;
+	offsetY = 0;
+	offsetZ = 0;
+
+
+
+
+
+	if (trap->Cmd_Argc() == 4)
+	{
+		trap->Cmd_Argv(1, offsetXStr, sizeof(offsetXStr));
+		trap->Cmd_Argv(2, offsetYStr, sizeof(offsetYStr));
+		trap->Cmd_Argv(3, offsetZStr, sizeof(offsetZStr));
+
+		offsetX = atof(offsetXStr);
+		offsetY = atof(offsetYStr);
+		offsetZ = atof(offsetZStr);
+
+
+		if ((cg.clientNum == cg.predictedPlayerState.clientNum && !cg.demoPlayback) || !cg.snap) {
+			x = cg.predictedPlayerState.origin[0];
+			y = cg.predictedPlayerState.origin[1];
+			z = cg.predictedPlayerState.origin[2];
+			yaw = cg.predictedPlayerState.viewangles[YAW];
+		}
+		else
+		{
+			x = cg.snap->ps.origin[0];
+			y = cg.snap->ps.origin[1];
+			z = cg.snap->ps.origin[2];
+			yaw = cg.snap->ps.viewangles[YAW];
+		}
+		teleOffsetX = x + offsetX;
+		teleOffsetY = y + offsetY;
+		teleOffsetZ = z + offsetZ;
+
+		trap->SendClientCommand(va("amtele %i %i %i %i\n", teleOffsetX, teleOffsetY, teleOffsetZ, yaw));
+	}
+
+	//If theres a 5th argument, interpret it as Player if its not gun and take Coordinations of Player and offset TP from there
+	if (trap->Cmd_Argc() == 5)
+	{
+
+
+		trap->Cmd_Argv(1, offsetXStr, sizeof(offsetXStr));
+		trap->Cmd_Argv(2, offsetYStr, sizeof(offsetYStr));
+		trap->Cmd_Argv(3, offsetZStr, sizeof(offsetZStr));
+		trap->Cmd_Argv(4, argv5, sizeof(argv5));
+
+		offsetX = atof(offsetXStr);
+		offsetY = atof(offsetYStr);
+		offsetZ = atof(offsetZStr);
+
+
+
+		if (Q_stricmp(argv5, "gun") == 0)
+		{
+			targetNum = -1;
+			targetNum = CG_CrosshairPlayer();
+			if (targetNum != -1) // To prevent crashes, check if we got an actual clientNumber
+			{
+				cent = &cg_entities[targetNum];
+				targetOrigin[0] = cent->playerState->origin[0];
+				targetOrigin[1] = cent->playerState->origin[1];
+				targetOrigin[2] = cent->playerState->origin[2];
+				yaw = cg.predictedPlayerState.viewangles[YAW];
+
+
+				teleOffsetX = targetOrigin[0] + offsetX;
+				teleOffsetY = targetOrigin[1] + offsetY;
+				teleOffsetZ = targetOrigin[2] + offsetZ;
+
+				controlX = teleOffsetX + barrier;
+				controlY = teleOffsetY + barrier;
+				controlZ = teleOffsetZ + barrier;
+				//Check if tp would kill target.
+
+				trap->SendClientCommand(va("amtele %i %i %i %i", controlX, controlY, controlZ, yaw));
+				//trap->SendClientCommand(va("amtele %i %i %i %i", teleOffsetX, teleOffsetY, teleOffsetZ, yaw));
+				trap->Print("CONTROLS: %i %i %i\n", controlX, controlY, controlZ);
+				trap->Print("TELEOFFSETS: %i %i %i\n", teleOffsetX, teleOffsetY, teleOffsetZ);
+
+			}
+		}
+		else
+		{
+			targetNum = -1;
+			targetNum = CG_ClientNumberFromString(argv5);
+			if (targetNum != -1)
+			{
+
+				cent = &cg_entities[targetNum];
+
+				targetOrigin[0] = cent->playerState->origin[0];
+				targetOrigin[1] = cent->playerState->origin[1];
+				targetOrigin[2] = cent->playerState->origin[2];
+				yaw = cg.predictedPlayerState.viewangles[YAW];
+
+				teleOffsetX = targetOrigin[0] + offsetX;
+				teleOffsetY = targetOrigin[1] + offsetY;
+				teleOffsetZ = targetOrigin[2] + offsetZ;
+
+				controlX = teleOffsetX + barrier;
+				controlY = teleOffsetY + barrier;
+				controlZ = teleOffsetZ + barrier;
+
+				trap->SendClientCommand(va("amtele %i %i %i %i", controlX, controlY, controlZ, yaw));
+
+			}
+			else
+			{
+				return;
+			}
+		}
+	}
+}
+
+static void CG_Rest_f(void) {
+	trap->SendClientCommand("amprotect\n");
+	trap->SendClientCommand("meditate\n");
+}
+
+extern void QDECL CG_Printf(const char* msg, ...);
+
+static void CG_Void_f(void) {
+	char arg[MAX_STRING_CHARS];
+	int targetNum = -1;
+	vec3_t newPos;
+	float voidDistance = 999999999.0f;
+
+	trap->Cmd_Argv(1, arg, sizeof(arg));
+
+	if (!arg[0]) {
+		CG_Printf("Usage: /void <name or id>\n");
+		return;
+	}
+
+	// Case 1: numeric clientNum
+	if (arg[0] >= '0' && arg[0] <= '9') {
+		targetNum = atoi(arg);
+	}
+	// Case 2: treat as player name
+	else {
+		targetNum = CG_ClientNumberFromString(arg);
+	}
+
+	if (targetNum < 0) {
+		CG_Printf("Player not found.\n");
+		return;
+	}
+
+	// Start from your position
+	VectorCopy(cg.predictedPlayerState.origin, newPos);
+
+	// Send them far away
+	newPos[0] += voidDistance;
+	newPos[1] += voidDistance;
+	newPos[2] += voidDistance;
+
+	trap->SendClientCommand(
+		va("amTele %d %.0f %.0f %.0f 0",
+			targetNum,
+			newPos[0],
+			newPos[1],
+			newPos[2])
+	);
+}
+
+static void CG_Goto_f(void) {
+	char arg[MAX_STRING_CHARS];
+	int targetNum = -1;
+	centity_t* cent;
+	vec3_t forward, targetPos, newPos;
+	vec3_t angles;
+	float distance = 64.0f; // distance in front of player
+
+	trap->Cmd_Argv(1, arg, sizeof(arg));
+
+	if (!arg[0]) {
+		CG_Printf("Usage: /goto <name or id>\n");
+		return;
+	}
+
+	// Case 1: numeric ID
+	if (arg[0] >= '0' && arg[0] <= '9') {
+		targetNum = atoi(arg);
+	}
+	// Case 2: player name
+	else {
+		targetNum = CG_ClientNumberFromString(arg);
+	}
+
+	if (targetNum < 0) {
+		CG_Printf("Player not found.\n");
+		return;
+	}
+
+	cent = &cg_entities[targetNum];
+
+	// Get target position
+	VectorCopy(cent->lerpOrigin, targetPos);
+
+	// Get target view angles
+	VectorCopy(cent->lerpAngles, angles);
+
+	// Convert angles to forward vector
+	AngleVectors(angles, forward, NULL, NULL);
+
+	// Position in front of them
+	VectorMA(targetPos, distance, forward, newPos);
+
+	// Slight height offset so you don't clip
+	newPos[2] += 24;
+
+	// Teleport yourself there
+	trap->SendClientCommand(
+		va("amTele %f %f %f %f",
+			newPos[0],
+			newPos[1],
+			newPos[2],
+			angles[YAW])
+	);
+}
+
 
 static consoleCommand_t	commands[] = {
 	{ "+scores",					CG_ScoresDown_f },
@@ -2770,10 +3135,18 @@ static consoleCommand_t	commands[] = {
 	{ "do",							CG_Do_f },
 	{ "doStop",						CG_DoCancel_f },
 	{ "doCancel",					CG_DoCancel_f },
-	{ "reply",						CG_Say_f}
+
+	{ "reply",						CG_Say_f},
+	{ "teleFrag",				   CG_TeleFrag_f },
+	{ "teleCrosshair",              CG_TeleCrosshair_f },
+	{ "bring",                      CG_TeleCrosshairToMe_f },
+	{ "teleport",                   CG_PTele_Offset_f },
+	{ "rest",						CG_Rest_f },
+	{ "void",						CG_Void_f },
+
 };
 
-static const size_t numCommands = ARRAY_LEN( commands );
+static const size_t numCommands = ARRAY_LEN(commands);
 
 /*
 =================
@@ -2783,19 +3156,19 @@ The string has been tokenized and can be retrieved with
 Cmd_Argc() / Cmd_Argv()
 =================
 */
-qboolean CG_ConsoleCommand( void ) {
-	consoleCommand_t	*command = NULL;
+qboolean CG_ConsoleCommand(void) {
+	consoleCommand_t* command = NULL;
 
-	command = (consoleCommand_t *)Q_LinearSearch( CG_Argv( 0 ), commands, numCommands, sizeof( commands[0] ), cmdcmp );
+	command = (consoleCommand_t*)Q_LinearSearch(CG_Argv(0), commands, numCommands, sizeof(commands[0]), cmdcmp);
 
-	if ( !command || !command->func )
+	if (!command || !command->func)
 		return qfalse;
 
 	command->func();
 	return qtrue;
 }
 
-static const char *gcmds[] = {
+static const char* gcmds[] = {
 	"addbot",
 	"callteamvote",
 	"callvote",
@@ -2995,7 +3368,7 @@ static const char *gcmds[] = {
 	"amWon",
 	"sleep",
 };
-static const size_t numgcmds = ARRAY_LEN( gcmds );
+static const size_t numgcmds = ARRAY_LEN(gcmds);
 
 /*
 =================
@@ -3005,16 +3378,16 @@ Let the client system know about all of our commands
 so it can perform tab completion
 =================
 */
-void CG_InitConsoleCommands( void ) {
+void CG_InitConsoleCommands(void) {
 	size_t i;
 
-	for ( i = 0; i < numCommands; i++ )
-		trap->AddCommand( commands[i].cmd );
+	for (i = 0; i < numCommands; i++)
+		trap->AddCommand(commands[i].cmd);
 
 	//
 	// the game server will interpret these commands, which will be automatically
 	// forwarded to the server after they are not recognized locally
 	//
-	for( i = 0; i < numgcmds; i++ )
-		trap->AddCommand( gcmds[i] );
+	for (i = 0; i < numgcmds; i++)
+		trap->AddCommand(gcmds[i]);
 }

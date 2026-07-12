@@ -5140,32 +5140,32 @@ CG_PlayerSprites
 Float sprites over the player's head
 ===============
 */
-static void CG_PlayerSprites( centity_t *cent ) {
-//	int		team;
+static void CG_PlayerSprites(centity_t* cent) {
+	//    int        team;
 
 	if (cg.snap &&
 		CG_IsMindTricked(cent->currentState.trickedentindex,
-		cent->currentState.trickedentindex2,
-		cent->currentState.trickedentindex3,
-		cent->currentState.trickedentindex4,
-		cg.snap->ps.clientNum))
+			cent->currentState.trickedentindex2,
+			cent->currentState.trickedentindex3,
+			cent->currentState.trickedentindex4,
+			cg.snap->ps.clientNum))
 	{
 		return; //this entity is mind-tricking the current client, so don't render it
 	}
 
-	if ( cent->currentState.eFlags & EF_CONNECTION ) {
-		CG_PlayerFloatSprite( cent, cgs.media.connectionShader );
+	if (cent->currentState.eFlags & EF_CONNECTION) {
+		CG_PlayerFloatSprite(cent, cgs.media.connectionShader);
 		return;
 	}
 
 	if (cent->vChatTime > cg.time)
 	{
-		CG_PlayerFloatSprite( cent, cgs.media.vchatShader );
+		CG_PlayerFloatSprite(cent, cgs.media.vchatShader);
 	}
-	else if ( cent->currentState.eType != ET_NPC && //don't draw talk balloons on NPCs
-		(cent->currentState.eFlags & EF_TALK) )
+	else if (cent->currentState.eType != ET_NPC && //don't draw talk balloons on NPCs
+		(cent->currentState.eFlags & EF_TALK))
 	{
-		CG_PlayerFloatSprite( cent, cgs.media.balloonShader );
+		CG_PlayerFloatSprite(cent, cgs.media.balloonShader);
 		return;
 	}
 }
