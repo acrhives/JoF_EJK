@@ -977,20 +977,23 @@ CL_KeyMove
 Sets the usercmd_t based on key states
 ================
 */
-void CL_KeyMove( usercmd_t *cmd ) {
+void CL_KeyMove(usercmd_t* cmd) {
 	int		movespeed;
 	int		forward, side, up;
 	float	s1, s2;
+
+#define IDRIVE_OPPOSITE_SCALE 0.25f
 
 	//
 	// adjust for speed key / running
 	// the walking flag is to keep animations consistant
 	// even during acceleration and develeration
 	//
-	if ( in_speed.active ^ cl_run->integer ) {
+	if (in_speed.active ^ cl_run->integer) {
 		movespeed = 127;
 		cmd->buttons &= ~BUTTON_WALKING;
-	} else {
+	}
+	else {
 		cmd->buttons |= BUTTON_WALKING;
 		movespeed = 46;
 	}
@@ -1002,64 +1005,79 @@ void CL_KeyMove( usercmd_t *cmd ) {
 	if (in_strafe.active) {
 		s1 = CL_KeyState(&in_right);
 		s2 = CL_KeyState(&in_left);
+
 		if (cl_idrive->integer && cl_idrive->integer != 2) {
 			if (s1 && s2) {
 				if (in_right.downtime > in_left.downtime)
-					s2 = 0;
-				if (in_right.downtime < in_left.downtime)
-					s1 = 0;
+					s2 *= IDRIVE_OPPOSITE_SCALE;
+
+				else if (in_left.downtime > in_right.downtime)
+					s1 *= IDRIVE_OPPOSITE_SCALE;
 			}
 		}
+
 		side += movespeed * s1;
 		side -= movespeed * s2;
 	}
 
 	s1 = CL_KeyState(&in_moveright);
 	s2 = CL_KeyState(&in_moveleft);
+
 	if (cl_idrive->integer && cl_idrive->integer != 2) {
 		if (s1 && s2) {
 			if (in_moveright.downtime > in_moveleft.downtime)
-				s2 = 0;
-			if (in_moveright.downtime < in_moveleft.downtime)
-				s1 = 0;
+				s2 *= IDRIVE_OPPOSITE_SCALE;
+
+			else if (in_moveleft.downtime > in_moveright.downtime)
+				s1 *= IDRIVE_OPPOSITE_SCALE;
 		}
 	}
+
 	side += movespeed * s1;
 	side -= movespeed * s2;
 
-	s1 = CL_KeyState (&in_up);
-	s2 = CL_KeyState (&in_down);
-	if (cl_idrive->integer || cl_idrive->integer == 2) {
+
+	s1 = CL_KeyState(&in_up);
+	s2 = CL_KeyState(&in_down);
+
+	if (cl_idrive->integer) {
 		if (s1 && s2) {
 			if (in_up.downtime > in_down.downtime)
-				s2 = 0;
-			if (in_up.downtime < in_down.downtime)
-				s1 = 0;
+				s2 *= IDRIVE_OPPOSITE_SCALE;
+
+			else if (in_down.downtime > in_up.downtime)
+				s1 *= IDRIVE_OPPOSITE_SCALE;
 		}
 	}
+
 	up += movespeed * s1;
 	up -= movespeed * s2;
 
-	s1 = CL_KeyState (&in_forward);
-	s2 = CL_KeyState (&in_back);
+
+	s1 = CL_KeyState(&in_forward);
+	s2 = CL_KeyState(&in_back);
+
 	if (cl_idrive->integer && cl_idrive->integer != 2) {
 		if (s1 && s2) {
 			if (in_forward.downtime > in_back.downtime)
-				s2 = 0;
-			if (in_forward.downtime < in_back.downtime)
-				s1 = 0;
+				s2 *= IDRIVE_OPPOSITE_SCALE;
+
+			else if (in_back.downtime > in_forward.downtime)
+				s1 *= IDRIVE_OPPOSITE_SCALE;
 		}
 	}
+
 	forward += movespeed * s1;
 	forward -= movespeed * s2;
+
 
 	//snaphud
 	cl.snappinghud.m[0] = forward;
 	cl.snappinghud.m[1] = side;
 
-	cmd->forwardmove = ClampChar( forward );
-	cmd->rightmove = ClampChar( side );
-	cmd->upmove = ClampChar( up );
+	cmd->forwardmove = ClampChar(forward);
+	cmd->rightmove = ClampChar(side);
+	cmd->upmove = ClampChar(up);
 }
 /*
 =================
