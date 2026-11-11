@@ -180,6 +180,10 @@ if(WIN64)
 	set(SharedDefines ${SharedDefines} "WIN64")
 endif()
 
+if(WIN64)
+	set(SharedDefines ${SharedDefines} "WIN64")
+endif()
+
 if (APPLE)
 	set(SharedDefines "MACOS_X")
 endif()
